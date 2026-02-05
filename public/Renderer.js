@@ -1,0 +1,120 @@
+/**
+ * Renderer - Handles all canvas drawing
+ */
+export class Renderer {
+    constructor(ctx, colors) {
+        this.ctx = ctx;
+        this.colors = colors;
+    }
+    
+    clear(width, height) {
+        this.ctx.clearRect(0, 0, width, height);
+    }
+    
+    drawBackground(camera, world, width, height) {
+        const groundGradient = this.ctx.createLinearGradient(0, 0, 0, height);
+        groundGradient.addColorStop(0, '#08040f');
+        groundGradient.addColorStop(1, this.colors.ground);
+
+        this.ctx.fillStyle = groundGradient;
+        this.ctx.fillRect(0, 0, width, height);
+    }
+    
+    drawGround(camera, world, width, height) {}
+    
+    drawGrid(camera, world, width, height) {
+        const gridSize = 100;
+        this.ctx.strokeStyle = this.colors.grid;
+        this.ctx.lineWidth = 1;
+        
+        const startX = Math.floor(camera.x / gridSize) * gridSize;
+        const endX = startX + (width / camera.zoom) + gridSize;
+        const startY = Math.floor(camera.y / gridSize) * gridSize;
+        const endY = startY + (height / camera.zoom) + gridSize;
+        
+        for (let x = startX; x < endX; x += gridSize) {
+            const screenX = (x - camera.x) * camera.zoom;
+            this.ctx.beginPath();
+            this.ctx.moveTo(screenX, 0);
+            this.ctx.lineTo(screenX, height);
+            this.ctx.stroke();
+        }
+        
+        for (let y = startY; y < endY; y += gridSize) {
+            const screenY = (y - camera.y) * camera.zoom;
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, screenY);
+            this.ctx.lineTo(width, screenY);
+            this.ctx.stroke();
+        }
+    }
+
+    drawWorldBounds(camera, world) {
+        const x = (0 - camera.x) * camera.zoom;
+        const y = (0 - camera.y) * camera.zoom;
+        const w = world.width * camera.zoom;
+        const h = world.height * camera.zoom;
+
+        this.ctx.strokeStyle = this.colors.accent;
+        this.ctx.lineWidth = 2;
+        this.ctx.shadowBlur = 8;
+        this.ctx.shadowColor = this.colors.accent;
+        this.ctx.strokeRect(x, y, w, h);
+        this.ctx.shadowBlur = 0;
+    }
+    
+    drawCreatures(creatures, camera, width, height) {
+        for (let i = 0; i < creatures.count; i++) {
+            const screenX = (creatures.posX[i] - camera.x) * camera.zoom;
+            const screenY = (creatures.posY[i] - camera.y) * camera.zoom;
+            const size = creatures.size[i] * camera.zoom;
+            
+            if (screenX < -size || screenX > width + size ||
+                screenY < -size || screenY > height + size) {
+                continue;
+            }
+            
+            const colorInt = creatures.color[i];
+            const r = (colorInt >> 24) & 0xFF;
+            const g = (colorInt >> 16) & 0xFF;
+            const b = (colorInt >> 8) & 0xFF;
+            const a = (colorInt & 0xFF) / 255;
+            
+            this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
+            this.ctx.shadowBlur = 15 * camera.zoom;
+            this.ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 0.8)`;
+            
+            this.ctx.beginPath();
+            this.ctx.arc(screenX, screenY, size / 2, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            if (camera.zoom > 0.5) {
+                const barWidth = size;
+                const barHeight = 3 * camera.zoom;
+                const energyPercent = creatures.energy[i] / 100;
+                
+                this.ctx.shadowBlur = 0;
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                this.ctx.fillRect(screenX - barWidth / 2, screenY - size, barWidth, barHeight);
+                
+                const energyColor = energyPercent > 0.5 ? '#00ff41' : energyPercent > 0.25 ? '#00f3ff' : '#bc13fe';
+                this.ctx.fillStyle = energyColor;
+                this.ctx.fillRect(screenX - barWidth / 2, screenY - size, barWidth * energyPercent, barHeight);
+            }
+        }
+        
+        this.ctx.shadowBlur = 0;
+    }
+    
+    drawDebug(camera, creatureCount, width, height) {
+        this.ctx.fillStyle = 'rgba(0, 243, 255, 0.8)';
+        this.ctx.font = '12px "Orbitron", monospace';
+        this.ctx.fillText(`Camera: (${Math.round(camera.x)}, ${Math.round(camera.y)})`, 10, height - 45);
+        this.ctx.fillText(`Zoom: ${Math.round(camera.zoom * 100)}%`, 10, height - 30);
+        this.ctx.fillText(`Creatures: ${creatureCount}`, 10, height - 15);
+    }
+    
+    getGroundScreenY(camera, world) {
+        return 0;
+    }
+}

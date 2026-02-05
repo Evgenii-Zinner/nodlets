@@ -9,13 +9,35 @@
 <body>
     <div class="game-container">
         <div class="controls">
-            <button id="zoomIn">Zoom In (+)</button>
-            <button id="zoomOut">Zoom Out (-)</button>
-            <button id="resetZoom">Reset Zoom</button>
-            <span class="zoom-level">Zoom: <span id="zoomValue">100%</span></span>
+            <button id="zoomIn" title="Zoom In">+</button>
+            <button id="zoomOut" title="Zoom Out">-</button>
+            <button id="resetZoom" title="Reset">⟲</button>
+            <span class="zoom-level"><span id="zoomValue">100%</span></span>
         </div>
+        
+        <div class="creature-panel">
+            <div class="panel-header">Creatures (<span id="creatureCount">0</span>)</div>
+            <div id="creatureList" class="creature-list"></div>
+        </div>
+        
+        <div class="status-panel">
+            <div class="status-header">Selected Creature</div>
+            <div class="status-item">
+                <span class="status-label">State:</span>
+                <span class="status-state" id="creatureState">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Age:</span>
+                <span class="status-value" id="creatureAge">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Energy:</span>
+                <span class="status-value" id="creatureStateEnergy">-</span>
+            </div>
+        </div>
+        
         <canvas id="gameCanvas"></canvas>
     </div>
-    <script src="game.js"></script>
+    <script type="module" src="game.js"></script>
 </body>
 </html>
