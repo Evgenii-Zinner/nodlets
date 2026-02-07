@@ -4,6 +4,7 @@
  */
 
 import { CreatureSystem } from './CreatureSystem.js';
+import { ResourceSystem } from './ResourceSystem.js';
 import { Camera } from './Camera.js';
 import { Renderer } from './Renderer.js';
 import { Input } from './Input.js';
@@ -28,7 +29,8 @@ class CanvasGame {
         
         this.camera = new Camera(this.world, this.canvas);
         this.renderer = new Renderer(this.ctx, this.colors);
-        this.creatures = new CreatureSystem(1000);
+        this.creatures = new CreatureSystem(2000);
+        this.resources = new ResourceSystem(500);
         this.input = new Input(this.canvas, this.camera, () => this.updateZoomDisplay());
         
         this.lastFrameTime = performance.now();
@@ -43,15 +45,25 @@ class CanvasGame {
     init() {
         window.addEventListener('resize', () => this.resizeCanvas());
         this.spawnInitialCreatures();
+        this.spawnInitialResources();
         this.updateCreatureList();
         this.gameLoop();
     }
     
     spawnInitialCreatures() {
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 200; i++) {
             const x = Math.random() * this.world.width;
             const y = Math.random() * this.world.height;
             this.creatures.spawn(x, y);
+        }
+    }
+
+    spawnInitialResources() {
+        for (let i = 0; i < 300; i++) {
+            const x = Math.random() * this.world.width;
+            const y = Math.random() * this.world.height;
+            const type = Math.random() > 0.3 ? 0 : 1; // 70% food, 30% charge
+            this.resources.spawn(x, y, type);
         }
     }
     
@@ -89,48 +101,107 @@ class CanvasGame {
         const count = document.getElementById('creatureCount');
         
         count.textContent = this.creatures.count;
-        list.innerHTML = '';
         
-        for (let i = 0; i < this.creatures.count; i++) {
+        // Synchronize DOM elements with creature count
+        while (list.children.length < this.creatures.count) {
             const item = document.createElement('div');
             item.className = 'creature-item';
+            item.innerHTML = `
+                <div class="creature-dot"></div>
+                <div class="creature-info">
+                    <div class="creature-id"></div>
+                    <div class="creature-energy"></div>
+                </div>
+            `;
             
+            const index = list.children.length;
+            item.addEventListener('click', () => {
+                const x = this.creatures.posX[index];
+                const y = this.creatures.posY[index];
+                this.camera.focusOn(x, y, this.canvas);
+                this.updateCreatureStatus(index);
+            });
+            
+            // Cache sub-elements for faster updates
+            item._elements = {
+                dot: item.querySelector('.creature-dot'),
+                id: item.querySelector('.creature-id'),
+                energy: item.querySelector('.creature-energy')
+            };
+
+            list.appendChild(item);
+        }
+
+        while (list.children.length > this.creatures.count) {
+            list.removeChild(list.lastChild);
+        }
+
+        // Update existing elements
+        for (let i = 0; i < this.creatures.count; i++) {
+            const item = list.children[i];
+            const { dot, id, energy } = item._elements;
+
             const colorInt = this.creatures.color[i];
             const r = (colorInt >> 24) & 0xFF;
             const g = (colorInt >> 16) & 0xFF;
             const b = (colorInt >> 8) & 0xFF;
             const color = `rgb(${r}, ${g}, ${b})`;
-            
-            const energy = Math.round(this.creatures.energy[i]);
-            
-            item.innerHTML = `
-                <div class="creature-dot" style="background: ${color};"></div>
-                <div class="creature-info">
-                    <div class="creature-id">#${i + 1}</div>
-                    <div class="creature-energy">Energy: ${energy}%</div>
-                </div>
-            `;
-            
-            const creatureIndex = i;
-            item.addEventListener('click', () => {
-                const x = this.creatures.posX[creatureIndex];
-                const y = this.creatures.posY[creatureIndex];
-                this.camera.focusOn(x, y, this.canvas);
-                this.updateCreatureStatus(creatureIndex);
-            });
-            
-            list.appendChild(item);
+
+            const energyVal = Math.round(this.creatures.energy[i]);
+            const energyText = `Energy: ${energyVal}%`;
+            const idText = `#${i + 1}`;
+
+            // Only update DOM if values changed to reduce layout/paint work
+            if (dot.style.backgroundColor !== color) dot.style.backgroundColor = color;
+            if (id.textContent !== idText) id.textContent = idText;
+            if (energy.textContent !== energyText) energy.textContent = energyText;
         }
     }
     
     update(deltaTime) {
         this.creatures.update(deltaTime, this.world);
+        this.resources.update(deltaTime, this.world);
+
+        // Interaction: Awareness & AI (Bolt optimized via Spatial Grid)
+        for (let i = 0; i < this.creatures.count; i++) {
+            const cx = this.creatures.posX[i];
+            const cy = this.creatures.posY[i];
+            const energy = this.creatures.energy[i];
+
+            if (energy < 80) {
+                this.resources.forEachNeighbor(cx, cy, 2000, (resIdx) => {
+                    const rx = this.resources.posX[resIdx];
+                    const ry = this.resources.posY[resIdx];
+                    const dx = rx - cx;
+                    const dy = ry - cy;
+                    const distSq = dx * dx + dy * dy;
+                    const dist = Math.sqrt(distSq);
+
+                    if (dist < 30) {
+                        // Consuming
+                        const amount = Math.min(this.resources.amount[resIdx], deltaTime * 40);
+                        this.creatures.energy[i] += amount;
+                        this.resources.amount[resIdx] -= amount;
+
+                        // Slow down when eating
+                        this.creatures.velX[i] *= 0.9;
+                        this.creatures.velY[i] *= 0.9;
+                    } else if (energy < 50) {
+                        // Attraction: Move towards resource if hungry
+                        const force = (1.0 - dist / 2000) * 20 * deltaTime;
+                        this.creatures.velX[i] += (dx / dist) * force;
+                        this.creatures.velY[i] += (dy / dist) * force;
+                    }
+                });
+            }
+        }
     }
     
     render() {
         this.renderer.clear(this.canvas.width, this.canvas.height);
         this.renderer.drawBackground(this.camera, this.world, this.canvas.width, this.canvas.height);
         this.renderer.drawGrid(this.camera, this.world, this.canvas.width, this.canvas.height);
+        this.renderer.drawResources(this.resources, this.camera, this.canvas.width, this.canvas.height);
         this.renderer.drawCreatures(this.creatures, this.camera, this.canvas.width, this.canvas.height);
         this.renderer.drawDebug(this.camera, this.creatures.count, this.canvas.width, this.canvas.height);
     }
