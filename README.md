@@ -1,6 +1,6 @@
-# Canvas Game
+# Nodlets
 
-HTML5 Canvas game hosted on Cloudflare Workers with EZ Space aesthetic.
+HTML5 Canvas game hosted on Cloudflare Workers.
 
 ## Features
 
