@@ -5,6 +5,21 @@ export class Renderer {
     constructor(ctx, colors) {
         this.ctx = ctx;
         this.colors = colors;
+        this.colorCache = new Map();
+    }
+
+    getColorStrings(colorInt) {
+        if (!this.colorCache.has(colorInt)) {
+            const r = (colorInt >> 24) & 0xFF;
+            const g = (colorInt >> 16) & 0xFF;
+            const b = (colorInt >> 8) & 0xFF;
+            const a = (colorInt & 0xFF) / 255;
+            this.colorCache.set(colorInt, {
+                fill: `rgba(${r}, ${g}, ${b}, ${a})`,
+                shadow: `rgba(${r}, ${g}, ${b}, 0.8)`
+            });
+        }
+        return this.colorCache.get(colorInt);
     }
     
     clear(width, height) {
@@ -49,6 +64,52 @@ export class Renderer {
         }
     }
 
+    drawResources(resources, camera, width, height) {
+        this.ctx.shadowBlur = 0;
+        for (let i = 0; i < resources.count; i++) {
+            const size = 15 * camera.zoom;
+            const screenX = (resources.posX[i] - camera.x) * camera.zoom;
+            const screenY = (resources.posY[i] - camera.y) * camera.zoom;
+
+            if (screenX < -size || screenX > width + size ||
+                screenY < -size || screenY > height + size) {
+                continue;
+            }
+
+            const type = resources.type[i];
+            const amount = resources.amount[i] / 100;
+
+            // Food: Green/Cyan, Charge: Purple/Pink
+            this.ctx.fillStyle = type === 0 ? `rgba(0, 255, 65, ${0.3 + amount * 0.7})` : `rgba(188, 19, 254, ${0.3 + amount * 0.7})`;
+
+            this.ctx.beginPath();
+            if (type === 0) {
+                // Diamond for data
+                this.ctx.moveTo(screenX, screenY - size);
+                this.ctx.lineTo(screenX + size, screenY);
+                this.ctx.lineTo(screenX, screenY + size);
+                this.ctx.lineTo(screenX - size, screenY);
+            } else {
+                // Hexagon for charge
+                for (let j = 0; j < 6; j++) {
+                    const angle = (j / 6) * Math.PI * 2;
+                    const px = screenX + Math.cos(angle) * size;
+                    const py = screenY + Math.sin(angle) * size;
+                    if (j === 0) this.ctx.moveTo(px, py);
+                    else this.ctx.lineTo(px, py);
+                }
+            }
+            this.ctx.closePath();
+            this.ctx.fill();
+
+            if (camera.zoom > 0.3) {
+                this.ctx.strokeStyle = this.colors.accent;
+                this.ctx.lineWidth = 1;
+                this.ctx.stroke();
+            }
+        }
+    }
+
     drawWorldBounds(camera, world) {
         const x = (0 - camera.x) * camera.zoom;
         const y = (0 - camera.y) * camera.zoom;
@@ -64,10 +125,15 @@ export class Renderer {
     }
     
     drawCreatures(creatures, camera, width, height) {
+        const shadowBlur = 15 * camera.zoom;
+
+        // Group indices by color to minimize state changes
+        const colorBatches = new Map();
+
         for (let i = 0; i < creatures.count; i++) {
+            const size = creatures.size[i] * camera.zoom;
             const screenX = (creatures.posX[i] - camera.x) * camera.zoom;
             const screenY = (creatures.posY[i] - camera.y) * camera.zoom;
-            const size = creatures.size[i] * camera.zoom;
             
             if (screenX < -size || screenX > width + size ||
                 screenY < -size || screenY > height + size) {
@@ -75,31 +141,48 @@ export class Renderer {
             }
             
             const colorInt = creatures.color[i];
-            const r = (colorInt >> 24) & 0xFF;
-            const g = (colorInt >> 16) & 0xFF;
-            const b = (colorInt >> 8) & 0xFF;
-            const a = (colorInt & 0xFF) / 255;
+            if (!colorBatches.has(colorInt)) colorBatches.set(colorInt, []);
+            colorBatches.get(colorInt).push(i);
+        }
+
+        this.ctx.shadowBlur = shadowBlur;
+
+        for (const [colorInt, indices] of colorBatches) {
+            const colors = this.getColorStrings(colorInt);
+            this.ctx.fillStyle = colors.fill;
+            this.ctx.shadowColor = colors.shadow;
             
-            this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
-            this.ctx.shadowBlur = 15 * camera.zoom;
-            this.ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 0.8)`;
-            
-            this.ctx.beginPath();
-            this.ctx.arc(screenX, screenY, size / 2, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            if (camera.zoom > 0.5) {
-                const barWidth = size;
-                const barHeight = 3 * camera.zoom;
-                const energyPercent = creatures.energy[i] / 100;
+            for (const i of indices) {
+                const screenX = (creatures.posX[i] - camera.x) * camera.zoom;
+                const screenY = (creatures.posY[i] - camera.y) * camera.zoom;
+                const size = creatures.size[i] * camera.zoom;
                 
-                this.ctx.shadowBlur = 0;
-                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                this.ctx.fillRect(screenX - barWidth / 2, screenY - size, barWidth, barHeight);
-                
-                const energyColor = energyPercent > 0.5 ? '#00ff41' : energyPercent > 0.25 ? '#00f3ff' : '#bc13fe';
-                this.ctx.fillStyle = energyColor;
-                this.ctx.fillRect(screenX - barWidth / 2, screenY - size, barWidth * energyPercent, barHeight);
+                this.ctx.beginPath();
+                this.ctx.arc(screenX, screenY, size / 2, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
+
+        // Draw energy bars in a separate pass to avoid shadowBlur toggling
+        if (camera.zoom > 0.5) {
+            this.ctx.shadowBlur = 0;
+            for (const indices of colorBatches.values()) {
+                for (const i of indices) {
+                    const screenX = (creatures.posX[i] - camera.x) * camera.zoom;
+                    const screenY = (creatures.posY[i] - camera.y) * camera.zoom;
+                    const size = creatures.size[i] * camera.zoom;
+
+                    const barWidth = size;
+                    const barHeight = 3 * camera.zoom;
+                    const energyPercent = creatures.energy[i] / 100;
+
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    this.ctx.fillRect(screenX - barWidth / 2, screenY - size, barWidth, barHeight);
+
+                    const energyColor = energyPercent > 0.5 ? '#00ff41' : energyPercent > 0.25 ? '#00f3ff' : '#bc13fe';
+                    this.ctx.fillStyle = energyColor;
+                    this.ctx.fillRect(screenX - barWidth / 2, screenY - size, barWidth * energyPercent, barHeight);
+                }
             }
         }
         
