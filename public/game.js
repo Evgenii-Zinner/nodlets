@@ -31,7 +31,12 @@ class CanvasGame {
         this.renderer = new Renderer(this.ctx, this.colors);
         this.creatures = new CreatureSystem(1500);
         this.resources = new ResourceSystem(1000);
-        this.input = new Input(this.canvas, this.camera, () => this.updateZoomDisplay());
+        this.input = new Input(
+            this.canvas,
+            this.camera,
+            () => this.updateZoomDisplay(),
+            (sx, sy) => this.handleCanvasClick(sx, sy)
+        );
 
         this.lastFrameTime = performance.now();
         this.updateAccumulator = 0;
@@ -98,6 +103,27 @@ class CanvasGame {
     updateCreatureCount() {
         const countEl = document.getElementById('creatureCount');
         if (countEl) countEl.textContent = this.creatures.count;
+    }
+
+    handleCanvasClick(sx, sy) {
+        const worldPos = this.camera.screenToWorld(sx, sy);
+        let nearestIndex = -1;
+        let minDist = 30 / this.camera.zoom; // Click tolerance in world units
+
+        this.creatures.forEachNeighbor(worldPos.x, worldPos.y, 50, (idx) => {
+            const dx = this.creatures.posX[idx] - worldPos.x;
+            const dy = this.creatures.posY[idx] - worldPos.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < minDist) {
+                minDist = dist;
+                nearestIndex = idx;
+            }
+        });
+
+        if (nearestIndex !== -1) {
+            this.updateCreatureStatus(nearestIndex);
+        }
     }
 
     update(deltaTime) {
