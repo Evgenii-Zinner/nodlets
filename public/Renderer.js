@@ -75,27 +75,24 @@ export class Renderer {
             }
 
             const type = resources.type[i];
-            const amount = resources.amount[i] / 100;
+            const maxAmount = 1000;
+            const amountRatio = Math.min(1.0, resources.amount[i] / maxAmount);
 
-            // Food: Green/Cyan, Charge: Purple/Pink
-            this.ctx.fillStyle = type === 0 ? `rgba(0, 255, 65, ${0.3 + amount * 0.7})` : `rgba(188, 19, 254, ${0.3 + amount * 0.7})`;
+            // Energy: Green, Data: Blue
+            this.ctx.fillStyle = type === 0
+                ? `rgba(0, 255, 65, ${0.3 + amountRatio * 0.7})`
+                : `rgba(0, 243, 255, ${0.3 + amountRatio * 0.7})`;
 
             this.ctx.beginPath();
             if (type === 0) {
-                // Diamond for data
+                // Diamond for Energy
                 this.ctx.moveTo(screenX, screenY - size);
                 this.ctx.lineTo(screenX + size, screenY);
                 this.ctx.lineTo(screenX, screenY + size);
                 this.ctx.lineTo(screenX - size, screenY);
-            } else {
-                // Hexagon for charge
-                for (let j = 0; j < 6; j++) {
-                    const angle = (j / 6) * Math.PI * 2;
-                    const px = screenX + Math.cos(angle) * size;
-                    const py = screenY + Math.sin(angle) * size;
-                    if (j === 0) this.ctx.moveTo(px, py);
-                    else this.ctx.lineTo(px, py);
-                }
+            } else if (type === 1) {
+                // Square for Data
+                this.ctx.rect(screenX - size / 2, screenY - size / 2, size, size);
             }
             this.ctx.closePath();
             this.ctx.fill();
@@ -164,8 +161,8 @@ export class Renderer {
                     const size = creatures.size[i] * camera.zoom;
 
                     const barWidth = size;
-                    const barHeight = 3 * camera.zoom;
-                    const energyPercent = creatures.energy[i] / 100;
+                    const barHeight = 2 * camera.zoom;
+                    const energyPercent = creatures.energy[i] / creatures.maxEnergy[i];
 
                     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
                     this.ctx.fillRect(screenX - barWidth / 2, screenY - size, barWidth, barHeight);

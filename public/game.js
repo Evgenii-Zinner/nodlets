@@ -29,8 +29,8 @@ class CanvasGame {
 
         this.camera = new Camera(this.world, this.canvas);
         this.renderer = new Renderer(this.ctx, this.colors);
-        this.creatures = new CreatureSystem(1500);
-        this.resources = new ResourceSystem(1000);
+        this.creatures = new CreatureSystem(10000);
+        this.resources = new ResourceSystem(2000);
         this.input = new Input(
             this.canvas,
             this.camera,
@@ -55,7 +55,7 @@ class CanvasGame {
     }
 
     spawnInitialCreatures() {
-        for (let i = 0; i < 20000; i++) {
+        for (let i = 0; i < this.creatures.maxCreatures * 0.8; i++) {
             const x = Math.random() * this.world.width;
             const y = Math.random() * this.world.height;
             this.creatures.spawn(x, y);
@@ -63,11 +63,13 @@ class CanvasGame {
     }
 
     spawnInitialResources() {
-        for (let i = 0; i < 30000; i++) {
-            const x = Math.random() * this.world.width;
-            const y = Math.random() * this.world.height;
-            const type = Math.random() > 0.3 ? 0 : 1; // 70% food, 30% charge
-            this.resources.spawn(x, y, type);
+        // Initial 20 Large Energy Nodes (Permanent)
+        for (let i = 0; i < 20; i++) {
+            this.resources.spawnEnergy(Math.random() * this.world.width, Math.random() * this.world.height);
+        }
+        // Initial 150 Data Nodes (Disposable)
+        for (let i = 0; i < 150; i++) {
+            this.resources.spawnData(Math.random() * this.world.width, Math.random() * this.world.height);
         }
     }
 
@@ -89,15 +91,21 @@ class CanvasGame {
         const stateEl = document.getElementById('creatureState');
         const ageEl = document.getElementById('creatureAge');
         const energyEl = document.getElementById('creatureStateEnergy');
+        const maxEnergyEl = document.getElementById('creatureMaxEnergy');
+        const intelEl = document.getElementById('creatureIntelligence');
+        const intentEl = document.getElementById('creatureIntent');
 
         const state = this.creatures.state[creatureIndex];
-        const stateText = state === 1 ? 'Wandering' : 'Idle';
+        const stateLabels = ['Seeking Energy', 'Seeking Data', 'Evolution Ready'];
 
-        stateEl.textContent = stateText;
-        stateEl.className = `status-state ${state === 1 ? 'wandering' : 'idle'}`;
+        stateEl.textContent = state === 2 ? 'Evolving' : 'Active';
+        stateEl.className = `status-state ${state === 2 ? 'idle' : 'wandering'}`;
 
         ageEl.textContent = Math.round(this.creatures.age[creatureIndex]) + 's';
-        energyEl.textContent = Math.round(this.creatures.energy[creatureIndex]) + '%';
+        intentEl.textContent = stateLabels[state] || 'None';
+        energyEl.textContent = Math.round(this.creatures.energy[creatureIndex]);
+        maxEnergyEl.textContent = this.creatures.maxEnergy[creatureIndex];
+        intelEl.textContent = Math.round(this.creatures.intelligence[creatureIndex]) + '%';
     }
 
     updateCreatureCount() {
@@ -135,32 +143,141 @@ class CanvasGame {
             const cx = this.creatures.posX[i];
             const cy = this.creatures.posY[i];
             const energy = this.creatures.energy[i];
+            const maxEnergy = this.creatures.maxEnergy[i];
+            const intelligence = this.creatures.intelligence[i];
 
-            if (energy < 80) {
-                this.resources.forEachNeighbor(cx, cy, 200, (resIdx) => {
+            // Death Logic
+            if (energy <= 0) {
+                this.resources.spawnData(cx, cy, 100); // Drop 100 Data on death
+                this.creatures.despawn(i);
+                i--; // Adjust loop for swap-and-pop
+                continue;
+            }
+
+            // Intelligence / Evolution Logic
+            if (intelligence >= 100) {
+                // ALWAYS Spawn Child First
+                this.creatures.spawn(cx + 10, cy + 10, {
+                    size: this.creatures.size[i],
+                    color: this.creatures.color[i]
+                });
+
+                if (Math.random() < 0.5) {
+                    // Parent Dies (Sacrifice)
+                    this.resources.spawnData(cx, cy, 200);
+                    this.creatures.despawn(i);
+                    i--;
+                    continue;
+                } else {
+                    // Parent Lives (Reset)
+                    this.creatures.intelligence[i] = 0;
+                }
+            }
+
+            // Seek Resources / Choice Logic (Hysteresis implemented)
+            let searchType = -1;
+            const currentState = this.creatures.state[i];
+
+            if (currentState === 0) {
+                // Currently Charging: Continue until nearly Full (Buffer to avoid getting stuck)
+                if (energy < maxEnergy - 2) {
+                    searchType = 0;
+                } else {
+                    // Full Enough! Switch to Data if needed
+                    this.creatures.state[i] = intelligence < 100 ? 1 : 2;
+                    searchType = this.creatures.state[i] === 1 ? 1 : -1;
+                }
+            } else {
+                // Normal operation
+                if (energy < 50) {
+                    this.creatures.state[i] = 0; // Start Seeking Energy
+                    searchType = 0;
+                } else if (intelligence < 100) {
+                    this.creatures.state[i] = 1; // Seeking Data
+                    searchType = 1;
+                } else {
+                    this.creatures.state[i] = 2; // Evolving
+                }
+            }
+
+            let foundResource = false;
+            if (searchType !== -1) {
+                let closestDistSq = 300 * 300;
+                let targetResIdx = -1;
+
+                this.resources.forEachNeighbor(cx, cy, 300, (resIdx) => {
+                    if (this.resources.type[resIdx] !== searchType) return;
+                    if (this.resources.amount[resIdx] <= 0) return;
+
+                    // Economy V2: Energy Sufficiency Check
+                    if (searchType === 0) {
+                        const needed = maxEnergy - energy;
+                        if (this.resources.amount[resIdx] < needed) return;
+                    }
+
                     const rx = this.resources.posX[resIdx];
                     const ry = this.resources.posY[resIdx];
                     const dx = rx - cx;
                     const dy = ry - cy;
                     const distSq = dx * dx + dy * dy;
-                    const dist = Math.sqrt(distSq);
 
-                    if (dist < 30) {
-                        // Consuming
-                        const amount = Math.min(this.resources.amount[resIdx], deltaTime * 40);
-                        this.creatures.energy[i] += amount;
-                        this.resources.amount[resIdx] -= amount;
+                    if (distSq < closestDistSq) {
+                        closestDistSq = distSq;
+                        targetResIdx = resIdx;
+                    }
+                });
 
-                        // Slow down when eating
-                        this.creatures.velX[i] *= 0.9;
-                        this.creatures.velY[i] *= 0.9;
-                    } else if (energy < 50) {
-                        // Attraction: Move towards resource if hungry
-                        const force = (1.0 - dist / 2000) * 20 * deltaTime;
+                if (targetResIdx !== -1) {
+                    foundResource = true;
+                    const resIdx = targetResIdx;
+                    const rx = this.resources.posX[resIdx];
+                    const ry = this.resources.posY[resIdx];
+                    const dx = rx - cx;
+                    const dy = ry - cy;
+
+                    if (closestDistSq < 900) { // dist < 30
+                        const bite = 25 * deltaTime;
+                        const amount = Math.min(this.resources.amount[resIdx], bite);
+
+                        if (searchType === 0) {
+                            // Energy: Subtract but NO DESPAWN (Regenerates)
+                            this.creatures.energy[i] = Math.min(maxEnergy, this.creatures.energy[i] + amount);
+                            this.resources.amount[resIdx] -= amount;
+                        } else {
+                            // Data: Subtract and DESPAWN when empty
+                            this.creatures.intelligence[i] = Math.min(100, this.creatures.intelligence[i] + amount);
+                            this.resources.amount[resIdx] -= amount;
+
+                            if (this.resources.amount[resIdx] <= 0) {
+                                this.resources.despawn(resIdx);
+                            }
+                        }
+
+                        this.creatures.velX[i] *= 0.8;
+                        this.creatures.velY[i] *= 0.8;
+                    } else {
+                        const dist = Math.sqrt(closestDistSq);
+                        const force = (1.0 - dist / 300) * 35 * deltaTime;
                         this.creatures.velX[i] += (dx / dist) * force;
                         this.creatures.velY[i] += (dy / dist) * force;
                     }
-                });
+                }
+            }
+
+            // Fallback search behavior (Directive wandering)
+            if (!foundResource && this.creatures.state[i] !== 2) {
+                this.creatures.wanderTimer[i] -= deltaTime;
+                if (this.creatures.wanderTimer[i] <= 0) {
+                    this.creatures.wanderAngle[i] += (Math.random() - 0.5) * Math.PI;
+                    this.creatures.wanderTimer[i] = 1 + Math.random() * 2;
+                }
+                const speed = 40;
+                this.creatures.velX[i] += (Math.cos(this.creatures.wanderAngle[i]) * speed - this.creatures.velX[i]) * 0.1;
+                this.creatures.velY[i] += (Math.sin(this.creatures.wanderAngle[i]) * speed - this.creatures.velY[i]) * 0.1;
+            } else if (this.creatures.state[i] === 2) {
+                // Drift when evolving
+                this.creatures.velX[i] *= 0.95;
+                this.creatures.velY[i] *= 0.95;
             }
         }
     }
