@@ -2,24 +2,24 @@
  * Camera - Handles viewport, zoom, and panning
  */
 export class Camera {
-    constructor(world, canvas) {
+    constructor(world, screen) {
         this.x = 0;
         this.y = 0;
         this.zoom = 1;
         this.minZoom = 0.1;
         this.maxZoom = 5;
 
-        this.centerOn(world, canvas);
+        this.centerOn(world, screen);
     }
 
-    centerOn(world, canvas) {
-        this.x = world.width / 2 - canvas.width / (2 * this.zoom);
-        this.y = world.height / 2 - canvas.height / (2 * this.zoom);
+    centerOn(world, screen) {
+        this.x = world.width / 2 - screen.width / (2 * this.zoom);
+        this.y = world.height / 2 - screen.height / (2 * this.zoom);
     }
 
-    focusOn(x, y, canvas) {
-        this.x = x - canvas.width / (2 * this.zoom);
-        this.y = y - canvas.height / (2 * this.zoom);
+    focusOn(x, y, screen) {
+        this.x = x - screen.width / (2 * this.zoom);
+        this.y = y - screen.height / (2 * this.zoom);
     }
 
     adjustZoom(delta, pivotX = null, pivotY = null) {

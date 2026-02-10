@@ -11,8 +11,7 @@ import { Input } from './Input.js';
 
 class CanvasGame {
     constructor() {
-        this.canvas = document.getElementById('gameCanvas');
-        this.ctx = this.canvas.getContext('2d');
+        this.container = document.querySelector('.game-container');
 
         this.world = {
             width: 5000,
@@ -21,22 +20,17 @@ class CanvasGame {
 
         this.colors = {
             ground: '#1a0f28',
-            grid: 'rgba(188, 19, 254, 0.2)',
-            accent: '#00f3ff'
+            grid: 0xBC13FE, // Hex for Pixi
+            accent: 0x00f3ff
         };
 
-        this.resizeCanvas();
-
-        this.camera = new Camera(this.world, this.canvas);
-        this.renderer = new Renderer(this.ctx, this.colors);
+        this.renderer = new Renderer(this.colors, this.world);
         this.creatures = new CreatureSystem(10000);
         this.resources = new ResourceSystem(2000);
-        this.input = new Input(
-            this.canvas,
-            this.camera,
-            () => this.updateZoomDisplay(),
-            (sx, sy) => this.handleCanvasClick(sx, sy)
-        );
+
+        // Input needs camera, which is created after renderer init
+        this.camera = null;
+        this.input = null;
 
         this.lastFrameTime = performance.now();
         this.updateAccumulator = 0;
@@ -47,8 +41,21 @@ class CanvasGame {
         this.init();
     }
 
-    init() {
-        window.addEventListener('resize', () => this.resizeCanvas());
+    async init() {
+        await this.renderer.init(this.container);
+
+        // Remove the old canvas if it exists (index.html has it)
+        const oldCanvas = document.getElementById('gameCanvas');
+        if (oldCanvas) oldCanvas.remove();
+
+        this.camera = new Camera(this.world, this.renderer.app.screen);
+        this.input = new Input(
+            this.renderer.app.canvas,
+            this.camera,
+            () => this.updateZoomDisplay(),
+            (sx, sy) => this.handleCanvasClick(sx, sy)
+        );
+
         this.spawnInitialCreatures();
         this.spawnInitialResources();
         this.gameLoop();
@@ -63,26 +70,22 @@ class CanvasGame {
     }
 
     spawnInitialResources() {
-        // Initial 20 Large Energy Nodes (Permanent)
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 100; i++) {
             this.resources.spawnEnergy(Math.random() * this.world.width, Math.random() * this.world.height);
         }
-        // Initial 150 Data Nodes (Disposable)
         for (let i = 0; i < 150; i++) {
             this.resources.spawnData(Math.random() * this.world.width, Math.random() * this.world.height);
         }
     }
 
-    resizeCanvas() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-    }
-
     updateZoomDisplay() {
-        document.getElementById('zoomValue').textContent =
-            Math.round(this.camera.zoom * 100) + '%';
+        if (this.camera) {
+            document.getElementById('zoomValue').textContent =
+                Math.round(this.camera.zoom * 100) + '%';
+        }
     }
 
+    // ... rest of the status methods stay mostly same ...
     updateCreatureStatus(creatureIndex) {
         if (creatureIndex < 0 || creatureIndex >= this.creatures.count) return;
 
@@ -114,9 +117,10 @@ class CanvasGame {
     }
 
     handleCanvasClick(sx, sy) {
+        if (!this.camera) return;
         const worldPos = this.camera.screenToWorld(sx, sy);
         let nearestIndex = -1;
-        let minDist = 30 / this.camera.zoom; // Click tolerance in world units
+        let minDist = 30 / this.camera.zoom;
 
         this.creatures.forEachNeighbor(worldPos.x, worldPos.y, 50, (idx) => {
             const dx = this.creatures.posX[idx] - worldPos.x;
@@ -138,7 +142,6 @@ class CanvasGame {
         this.creatures.update(deltaTime, this.world);
         this.resources.update(deltaTime, this.world);
 
-        // Interaction: Awareness & AI (Bolt optimized via Spatial Grid)
         for (let i = 0; i < this.creatures.count; i++) {
             const cx = this.creatures.posX[i];
             const cy = this.creatures.posY[i];
@@ -146,57 +149,48 @@ class CanvasGame {
             const maxEnergy = this.creatures.maxEnergy[i];
             const intelligence = this.creatures.intelligence[i];
 
-            // Death Logic
             if (energy <= 0) {
-                this.resources.spawnData(cx, cy, 100); // Drop 100 Data on death
+                this.resources.spawnData(cx, cy, 100);
                 this.creatures.despawn(i);
-                i--; // Adjust loop for swap-and-pop
+                i--;
                 continue;
             }
 
-            // Intelligence / Evolution Logic
             if (intelligence >= 100) {
-                // ALWAYS Spawn Child First
                 this.creatures.spawn(cx + 10, cy + 10, {
                     size: this.creatures.size[i],
                     color: this.creatures.color[i]
                 });
 
                 if (Math.random() < 0.5) {
-                    // Parent Dies (Sacrifice)
                     this.resources.spawnData(cx, cy, 200);
                     this.creatures.despawn(i);
                     i--;
                     continue;
                 } else {
-                    // Parent Lives (Reset)
                     this.creatures.intelligence[i] = 0;
                 }
             }
 
-            // Seek Resources / Choice Logic (Hysteresis implemented)
             let searchType = -1;
             const currentState = this.creatures.state[i];
 
             if (currentState === 0) {
-                // Currently Charging: Continue until nearly Full (Buffer to avoid getting stuck)
                 if (energy < maxEnergy - 2) {
                     searchType = 0;
                 } else {
-                    // Full Enough! Switch to Data if needed
                     this.creatures.state[i] = intelligence < 100 ? 1 : 2;
                     searchType = this.creatures.state[i] === 1 ? 1 : -1;
                 }
             } else {
-                // Normal operation
                 if (energy < 50) {
-                    this.creatures.state[i] = 0; // Start Seeking Energy
+                    this.creatures.state[i] = 0;
                     searchType = 0;
                 } else if (intelligence < 100) {
-                    this.creatures.state[i] = 1; // Seeking Data
+                    this.creatures.state[i] = 1;
                     searchType = 1;
                 } else {
-                    this.creatures.state[i] = 2; // Evolving
+                    this.creatures.state[i] = 2;
                 }
             }
 
@@ -209,7 +203,6 @@ class CanvasGame {
                     if (this.resources.type[resIdx] !== searchType) return;
                     if (this.resources.amount[resIdx] <= 0) return;
 
-                    // Economy V2: Energy Sufficiency Check
                     if (searchType === 0) {
                         const needed = maxEnergy - energy;
                         if (this.resources.amount[resIdx] < needed) return;
@@ -235,16 +228,14 @@ class CanvasGame {
                     const dx = rx - cx;
                     const dy = ry - cy;
 
-                    if (closestDistSq < 900) { // dist < 30
+                    if (closestDistSq < 900) {
                         const bite = 25 * deltaTime;
                         const amount = Math.min(this.resources.amount[resIdx], bite);
 
                         if (searchType === 0) {
-                            // Energy: Subtract but NO DESPAWN (Regenerates)
                             this.creatures.energy[i] = Math.min(maxEnergy, this.creatures.energy[i] + amount);
                             this.resources.amount[resIdx] -= amount;
                         } else {
-                            // Data: Subtract and DESPAWN when empty
                             this.creatures.intelligence[i] = Math.min(100, this.creatures.intelligence[i] + amount);
                             this.resources.amount[resIdx] -= amount;
 
@@ -264,7 +255,6 @@ class CanvasGame {
                 }
             }
 
-            // Fallback search behavior (Directive wandering)
             if (!foundResource && this.creatures.state[i] !== 2) {
                 this.creatures.wanderTimer[i] -= deltaTime;
                 if (this.creatures.wanderTimer[i] <= 0) {
@@ -275,7 +265,6 @@ class CanvasGame {
                 this.creatures.velX[i] += (Math.cos(this.creatures.wanderAngle[i]) * speed - this.creatures.velX[i]) * 0.1;
                 this.creatures.velY[i] += (Math.sin(this.creatures.wanderAngle[i]) * speed - this.creatures.velY[i]) * 0.1;
             } else if (this.creatures.state[i] === 2) {
-                // Drift when evolving
                 this.creatures.velX[i] *= 0.95;
                 this.creatures.velY[i] *= 0.95;
             }
@@ -283,12 +272,9 @@ class CanvasGame {
     }
 
     render() {
-        this.renderer.clear(this.canvas.width, this.canvas.height);
-        this.renderer.drawBackground(this.camera, this.world, this.canvas.width, this.canvas.height);
-        this.renderer.drawGrid(this.camera, this.world, this.canvas.width, this.canvas.height);
-        this.renderer.drawResources(this.resources, this.camera, this.canvas.width, this.canvas.height);
-        this.renderer.drawCreatures(this.creatures, this.camera, this.canvas.width, this.canvas.height);
-        this.renderer.drawDebug(this.camera, this.creatures.count, this.canvas.width, this.canvas.height);
+        if (this.camera) {
+            this.renderer.update(this.camera, this.creatures, this.resources);
+        }
     }
 
     gameLoop() {
@@ -315,6 +301,7 @@ class CanvasGame {
         requestAnimationFrame(() => this.gameLoop());
     }
 }
+
 
 document.addEventListener('DOMContentLoaded', () => {
     new CanvasGame();
