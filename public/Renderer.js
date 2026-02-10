@@ -15,17 +15,16 @@ export class Renderer {
             const b = (colorInt >> 8) & 0xFF;
             const a = (colorInt & 0xFF) / 255;
             this.colorCache.set(colorInt, {
-                fill: `rgba(${r}, ${g}, ${b}, ${a})`,
-                shadow: `rgba(${r}, ${g}, ${b}, 0.8)`
+                fill: `rgba(${r}, ${g}, ${b}, ${a})`
             });
         }
         return this.colorCache.get(colorInt);
     }
-    
+
     clear(width, height) {
         this.ctx.clearRect(0, 0, width, height);
     }
-    
+
     drawBackground(camera, world, width, height) {
         const groundGradient = this.ctx.createLinearGradient(0, 0, 0, height);
         groundGradient.addColorStop(0, '#08040f');
@@ -34,19 +33,19 @@ export class Renderer {
         this.ctx.fillStyle = groundGradient;
         this.ctx.fillRect(0, 0, width, height);
     }
-    
-    drawGround(camera, world, width, height) {}
-    
+
+    drawGround(camera, world, width, height) { }
+
     drawGrid(camera, world, width, height) {
         const gridSize = 100;
         this.ctx.strokeStyle = this.colors.grid;
         this.ctx.lineWidth = 1;
-        
+
         const startX = Math.floor(camera.x / gridSize) * gridSize;
         const endX = startX + (width / camera.zoom) + gridSize;
         const startY = Math.floor(camera.y / gridSize) * gridSize;
         const endY = startY + (height / camera.zoom) + gridSize;
-        
+
         for (let x = startX; x < endX; x += gridSize) {
             const screenX = (x - camera.x) * camera.zoom;
             this.ctx.beginPath();
@@ -54,7 +53,7 @@ export class Renderer {
             this.ctx.lineTo(screenX, height);
             this.ctx.stroke();
         }
-        
+
         for (let y = startY; y < endY; y += gridSize) {
             const screenY = (y - camera.y) * camera.zoom;
             this.ctx.beginPath();
@@ -65,7 +64,6 @@ export class Renderer {
     }
 
     drawResources(resources, camera, width, height) {
-        this.ctx.shadowBlur = 0;
         for (let i = 0; i < resources.count; i++) {
             const size = 15 * camera.zoom;
             const screenX = (resources.posX[i] - camera.x) * camera.zoom;
@@ -118,12 +116,9 @@ export class Renderer {
 
         this.ctx.strokeStyle = this.colors.accent;
         this.ctx.lineWidth = 2;
-        this.ctx.shadowBlur = 8;
-        this.ctx.shadowColor = this.colors.accent;
         this.ctx.strokeRect(x, y, w, h);
-        this.ctx.shadowBlur = 0;
     }
-    
+
     drawCreatures(creatures, camera, width, height) {
         const shadowBlur = 15 * camera.zoom;
 
@@ -134,29 +129,26 @@ export class Renderer {
             const size = creatures.size[i] * camera.zoom;
             const screenX = (creatures.posX[i] - camera.x) * camera.zoom;
             const screenY = (creatures.posY[i] - camera.y) * camera.zoom;
-            
+
             if (screenX < -size || screenX > width + size ||
                 screenY < -size || screenY > height + size) {
                 continue;
             }
-            
+
             const colorInt = creatures.color[i];
             if (!colorBatches.has(colorInt)) colorBatches.set(colorInt, []);
             colorBatches.get(colorInt).push(i);
         }
 
-        this.ctx.shadowBlur = shadowBlur;
-
         for (const [colorInt, indices] of colorBatches) {
             const colors = this.getColorStrings(colorInt);
             this.ctx.fillStyle = colors.fill;
-            this.ctx.shadowColor = colors.shadow;
-            
+
             for (const i of indices) {
                 const screenX = (creatures.posX[i] - camera.x) * camera.zoom;
                 const screenY = (creatures.posY[i] - camera.y) * camera.zoom;
                 const size = creatures.size[i] * camera.zoom;
-                
+
                 this.ctx.beginPath();
                 this.ctx.arc(screenX, screenY, size / 2, 0, Math.PI * 2);
                 this.ctx.fill();
@@ -165,7 +157,6 @@ export class Renderer {
 
         // Draw energy bars in a separate pass to avoid shadowBlur toggling
         if (camera.zoom > 0.5) {
-            this.ctx.shadowBlur = 0;
             for (const indices of colorBatches.values()) {
                 for (const i of indices) {
                     const screenX = (creatures.posX[i] - camera.x) * camera.zoom;
@@ -185,10 +176,8 @@ export class Renderer {
                 }
             }
         }
-        
-        this.ctx.shadowBlur = 0;
     }
-    
+
     drawDebug(camera, creatureCount, width, height) {
         this.ctx.fillStyle = 'rgba(0, 243, 255, 0.8)';
         this.ctx.font = '12px "Orbitron", monospace';
@@ -196,7 +185,7 @@ export class Renderer {
         this.ctx.fillText(`Zoom: ${Math.round(camera.zoom * 100)}%`, 10, height - 30);
         this.ctx.fillText(`Creatures: ${creatureCount}`, 10, height - 15);
     }
-    
+
     getGroundScreenY(camera, world) {
         return 0;
     }

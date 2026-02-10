@@ -81,100 +81,34 @@ button:active {
     font-size: 14px;
 }
 
-.creature-panel {
+.hud-top-right {
     position: absolute;
     top: 20px;
     right: 20px;
     z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.population-panel {
     background: var(--bg-card);
     border: 1px solid var(--primary-color);
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(188, 19, 254, 0.3);
     backdrop-filter: blur(10px);
-    width: 250px;
-    max-height: 350px;
-    display: flex;
-    flex-direction: column;
-}
-
-.panel-header {
+    padding: 12px;
     font-family: 'Orbitron', sans-serif;
     font-size: 14px;
     color: var(--secondary-color);
-    padding: 12px;
-    border-bottom: 1px solid var(--primary-color);
     font-weight: bold;
 }
 
-.creature-list {
-    overflow-y: auto;
-    flex: 1;
-    padding: 8px;
-}
 
-.creature-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px;
-    margin-bottom: 4px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
-}
-
-.creature-item:hover {
-    background: rgba(188, 19, 254, 0.2);
-    border-color: var(--secondary-color);
-    transform: translateX(4px);
-}
-
-.creature-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    box-shadow: 0 0 8px currentColor;
-}
-
-.creature-info {
-    flex: 1;
-    font-family: 'Chakra Petch', sans-serif;
-    font-size: 11px;
-}
-
-.creature-id {
-    color: var(--accent-color);
-    font-weight: bold;
-}
-
-.creature-energy {
-    color: var(--text-main);
-    opacity: 0.8;
-}
-
-.creature-list::-webkit-scrollbar {
-    width: 6px;
-}
-
-.creature-list::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 3px;
-}
-
-.creature-list::-webkit-scrollbar-thumb {
-    background: var(--primary-color);
-    border-radius: 3px;
-}
-
-.creature-list::-webkit-scrollbar-thumb:hover {
-    background: var(--secondary-color);
-}
 
 .status-panel {
     position: absolute;
-    top: 380px;
+    top: 70px;
     right: 20px;
     z-index: 10;
     background: var(--bg-card);

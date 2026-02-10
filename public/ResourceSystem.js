@@ -12,7 +12,7 @@ export class ResourceSystem {
         this.type = new Uint8Array(maxResources); // 0: Food (Data), 1: Charge
 
         // Spatial Grid
-        this.cellSize = 2000;
+        this.cellSize = 200;
         this.grid = null;
         this.gridCols = 0;
         this.gridRows = 0;
