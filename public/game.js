@@ -5,6 +5,7 @@
 
 import { CreatureSystem } from './CreatureSystem.js';
 import { ResourceSystem } from './ResourceSystem.js';
+import { UpgradeSystem } from './UpgradeSystem.js';
 import { Camera } from './Camera.js';
 import { Renderer } from './Renderer.js';
 import { Input } from './Input.js';
@@ -37,6 +38,9 @@ class CanvasGame {
         this.fixedTimeStep = 1 / 60;
 
         this.selectedCreatureIndex = -1;
+        this.totalDataConsumed = 0;
+
+        this.upgrades = new UpgradeSystem();
 
         this.init();
     }
@@ -56,25 +60,84 @@ class CanvasGame {
             (sx, sy) => this.handleCanvasClick(sx, sy)
         );
 
+        this.bindUpgradeEvents();
+
         this.spawnInitialCreatures();
         this.spawnInitialResources();
         this.gameLoop();
     }
 
     spawnInitialCreatures() {
-        for (let i = 0; i < this.creatures.maxCreatures * 0.8; i++) {
-            const x = Math.random() * this.world.width;
-            const y = Math.random() * this.world.height;
+        const centerX = this.world.width / 2;
+        const centerY = this.world.height / 2;
+        const radius = 300;
+
+        for (let i = 0; i < 50; i++) {
+            const angle = (i / 5) * Math.PI * 2;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
             this.creatures.spawn(x, y);
         }
     }
 
     spawnInitialResources() {
-        for (let i = 0; i < 100; i++) {
-            this.resources.spawnEnergy(Math.random() * this.world.width, Math.random() * this.world.height);
+        const centerX = this.world.width / 2;
+        const centerY = this.world.height / 2;
+        const maxDist = Math.max(this.world.width, this.world.height) / 2;
+
+        // 1. Center Hub (Single Energy Source)
+        this.resources.spawnEnergy(centerX, centerY);
+
+        // 2. Star Vectors (8 directions)
+        const directions = [
+            { dx: 1, dy: 0 }, { dx: -1, dy: 0 },   // Sides
+            { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+            { dx: 0.707, dy: 0.707 }, { dx: -0.707, dy: 0.707 }, // Diagonals
+            { dx: 0.707, dy: -0.707 }, { dx: -0.707, dy: -0.707 }
+        ];
+
+        directions.forEach(dir => {
+            // Spawn single points along the vector at equal distances
+            for (let step = 1; step <= 8; step++) {
+                const dist = step * (maxDist / 10);
+                const x = centerX + dir.dx * dist;
+                const y = centerY + dir.dy * dist;
+                this.resources.spawnEnergy(x, y);
+            }
+        });
+
+        // 3. Data Filling
+        for (let i = 0; i < 500; i++) {
+            const x = Math.random() * this.world.width;
+            const y = Math.random() * this.world.height;
+            this.resources.spawnData(x, y);
         }
-        for (let i = 0; i < 150; i++) {
-            this.resources.spawnData(Math.random() * this.world.width, Math.random() * this.world.height);
+    }
+
+    bindUpgradeEvents() {
+        const btn = document.getElementById('upgradeBtn');
+        const modal = document.getElementById('upgradeModal');
+        const choicesContainer = document.getElementById('upgradeChoices');
+
+        if (btn) {
+            btn.addEventListener('click', () => {
+                const choices = this.upgrades.getChoices();
+                choicesContainer.innerHTML = '';
+
+                choices.forEach((choice) => {
+                    const card = document.createElement('div');
+                    card.className = 'upgrade-card';
+                    card.innerHTML = `<h3>${choice.name}</h3><p>${choice.description}</p>`;
+                    card.onclick = () => {
+                        this.upgrades.applyUpgrade(choice);
+                        modal.classList.add('hidden');
+                        btn.classList.add('hidden');
+                    };
+                    choicesContainer.appendChild(card);
+                });
+
+                modal.classList.remove('hidden');
+            });
         }
     }
 
@@ -116,6 +179,11 @@ class CanvasGame {
         if (countEl) countEl.textContent = this.creatures.count;
     }
 
+    updateGlobalStats() {
+        const dataEl = document.getElementById('totalDataConsumed');
+        if (dataEl) dataEl.textContent = Math.floor(this.totalDataConsumed);
+    }
+
     handleCanvasClick(sx, sy) {
         if (!this.camera) return;
         const worldPos = this.camera.screenToWorld(sx, sy);
@@ -139,8 +207,21 @@ class CanvasGame {
     }
 
     update(deltaTime) {
+        // Upgrade Check
+        if (this.upgrades.checkMilestone(this.totalDataConsumed)) {
+            const btn = document.getElementById('upgradeBtn');
+            if (btn) btn.classList.remove('hidden');
+        }
+
+        if (Math.random() < this.upgrades.perks.dataDropChance) {
+            this.resources.spawnData(
+                Math.random() * this.world.width,
+                Math.random() * this.world.height
+            );
+        }
+
         this.creatures.update(deltaTime, this.world);
-        this.resources.update(deltaTime, this.world);
+        this.resources.update(deltaTime, this.world, this.upgrades.perks.energyResetRate);
 
         for (let i = 0; i < this.creatures.count; i++) {
             const cx = this.creatures.posX[i];
@@ -160,7 +241,7 @@ class CanvasGame {
                 this.creatures.spawn(cx + 10, cy + 10, {
                     size: this.creatures.size[i],
                     color: this.creatures.color[i]
-                });
+                }, this.upgrades.perks);
 
                 if (Math.random() < 0.5) {
                     this.resources.spawnData(cx, cy, 200);
@@ -238,6 +319,7 @@ class CanvasGame {
                         } else {
                             this.creatures.intelligence[i] = Math.min(100, this.creatures.intelligence[i] + amount);
                             this.resources.amount[resIdx] -= amount;
+                            this.totalDataConsumed += amount;
 
                             if (this.resources.amount[resIdx] <= 0) {
                                 this.resources.despawn(resIdx);
@@ -292,6 +374,7 @@ class CanvasGame {
 
         if (Math.random() < 0.016) {
             this.updateCreatureCount();
+            this.updateGlobalStats();
             if (this.selectedCreatureIndex >= 0) {
                 this.updateCreatureStatus(this.selectedCreatureIndex);
             }

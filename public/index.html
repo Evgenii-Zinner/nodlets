@@ -17,6 +17,7 @@
         </div>
         
         <div class="hud-top-right">
+            <button id="upgradeBtn" class="upgrade-btn hidden">★ UPGRADE AVAILABLE ★</button>
             <div class="status-panel">
                 <div class="status-header">Selected Creature</div>
                 <div class="status-item">
@@ -43,10 +44,25 @@
             <div class="population-panel">
                 Creatures: <span id="creatureCount">0</span>
             </div>
+            <div class="population-panel" style="margin-top: 10px;">
+                Data Harvested: <span id="totalDataConsumed" style="color: var(--accent-color);">0</span>
+            </div>
         </div>
         
         <canvas id="gameCanvas"></canvas>
     </div>
+
+    <!-- Upgrade Modal -->
+    <div id="upgradeModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>SYSTEM UPGRADE</h2>
+            <p>Milestone Reached! Select an enhancement:</p>
+            <div id="upgradeChoices" class="upgrade-choices">
+                <!-- Choices injected here -->
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="game.js"></script>
 </body>
 </html>

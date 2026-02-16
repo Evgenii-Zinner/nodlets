@@ -86,7 +86,7 @@ export class CreatureSystem {
         }
     }
 
-    spawn(x, y, parentParams = null) {
+    spawn(x, y, parentParams = null, perks = null) {
         if (this.count >= this.maxCreatures) return -1;
 
         const idx = this.count++;
@@ -96,10 +96,27 @@ export class CreatureSystem {
         this.velX[idx] = (Math.random() - 0.5) * 20;
         this.velY[idx] = (Math.random() - 0.5) * 20;
 
+        // Default perks if not provided
+        const p = perks || {
+            maxEnergyBoost: 0,
+            positiveMutationChance: 0.05,
+            negativeMutationChance: 0.05
+        };
+
         // Inheritance & Mutation
         if (parentParams) {
-            const mutation = 0.95 + Math.random() * 0.1; // +/- 5%
-            this.size[idx] = Math.max(4, Math.min(20, Math.round(parentParams.size * mutation)));
+            let mutationFactor = 1.0;
+            const rand = Math.random();
+
+            if (rand < p.positiveMutationChance) {
+                mutationFactor = 1.1 + Math.random() * 0.1; // Positive: +10% to +20%
+            } else if (rand < p.positiveMutationChance + p.negativeMutationChance) {
+                mutationFactor = 0.8 + Math.random() * 0.1; // Negative: -10% to -20%
+            } else {
+                mutationFactor = 0.95 + Math.random() * 0.1; // Neutral: +/- 5%
+            }
+
+            this.size[idx] = Math.max(4, Math.min(20, Math.round(parentParams.size * mutationFactor)));
             this.color[idx] = parentParams.color;
         } else {
             this.size[idx] = 8 + Math.random() * 4; // 8-12
@@ -107,8 +124,9 @@ export class CreatureSystem {
             this.color[idx] = colors[Math.floor(Math.random() * colors.length)];
         }
 
-        this.maxEnergy[idx] = 80 + Math.floor(Math.random() * 41); // 80-120
-        this.energy[idx] = 20; // Start with low energy to force seeking behavior
+        const baseMaxEnergy = 80 + Math.floor(Math.random() * 41);
+        this.maxEnergy[idx] = Math.min(255, baseMaxEnergy + p.maxEnergyBoost);
+        this.energy[idx] = 20; // Start with low energy
         this.intelligence[idx] = 0;
         this.age[idx] = 0;
 

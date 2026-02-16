@@ -86,16 +86,16 @@ export class ResourceSystem {
         }
     }
 
-    update(deltaTime, world) {
+    update(deltaTime, world, energyRate = 10) {
         if (!this.grid) this.initGrid(world.width, world.height);
         this.updateGrid();
 
         // Resources replenishment
         for (let i = 0; i < this.count; i++) {
             if (this.type[i] === 0) {
-                // Energy Regeneration: 1 unit per second
+                // Energy Regeneration
                 if (this.amount[i] < 1000) {
-                    this.amount[i] = Math.min(1000, this.amount[i] + deltaTime * 10);
+                    this.amount[i] = Math.min(1000, this.amount[i] + deltaTime * energyRate);
                 }
             }
             // Data (Type 1) no longer regenerates
