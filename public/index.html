@@ -10,9 +10,9 @@
 <body>
     <div class="game-container">
         <div class="controls">
-            <button id="zoomIn" title="Zoom In">+</button>
-            <button id="zoomOut" title="Zoom Out">-</button>
-            <button id="resetZoom" title="Reset">⟲</button>
+            <button id="zoomIn" title="Zoom In" aria-label="Zoom In">+</button>
+            <button id="zoomOut" title="Zoom Out" aria-label="Zoom Out">-</button>
+            <button id="resetZoom" title="Reset" aria-label="Reset Zoom">⟲</button>
             <span class="zoom-level"><span id="zoomValue">100%</span></span>
         </div>
         
@@ -20,6 +20,8 @@
             <button id="upgradeBtn" class="upgrade-btn hidden">★ UPGRADE AVAILABLE ★</button>
             <div class="status-panel">
                 <div class="status-header">Selected Creature</div>
+                <div id="creature-empty" style="font-style: italic; color: #888; padding: 10px; text-align: center;">Select a creature to inspect</div>
+                <div id="creature-details" class="hidden" style="display: flex; flex-direction: column; gap: 8px;">
                 <div class="status-item">
                     <span class="status-label">State:</span>
                     <span class="status-state" id="creatureState">-</span>
@@ -40,7 +42,8 @@
                     <span class="status-label">Intelligence:</span>
                     <span class="status-value"><span id="creatureIntelligence">-</span>%</span>
                 </div>
-            </div>
+
+                </div></div>
             <div class="population-panel">
                 Creatures: <span id="creatureCount">0</span>
             </div>
