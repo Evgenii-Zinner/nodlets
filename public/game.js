@@ -48,7 +48,12 @@ class CanvasGame {
     async init() {
         await this.renderer.init(this.container);
 
-        // Remove the old canvas if it exists (index.html has it)
+
+        // Accessibility for canvas
+        const newCanvas = this.renderer.app.canvas;
+        newCanvas.setAttribute('role', 'img');
+        newCanvas.setAttribute('aria-label', 'Simulation Canvas');
+// Remove the old canvas if it exists (index.html has it)
         const oldCanvas = document.getElementById('gameCanvas');
         if (oldCanvas) oldCanvas.remove();
 
@@ -149,7 +154,20 @@ class CanvasGame {
     }
 
     // ... rest of the status methods stay mostly same ...
+    clearCreatureSelection() {
+        this.selectedCreatureIndex = -1;
+        const empty = document.getElementById('creature-empty');
+        const details = document.getElementById('creature-details');
+        if (empty) empty.classList.remove('hidden');
+        if (details) details.classList.add('hidden');
+    }
+
     updateCreatureStatus(creatureIndex) {
+        const empty = document.getElementById('creature-empty');
+        const details = document.getElementById('creature-details');
+        if (empty) empty.classList.add('hidden');
+        if (details) details.classList.remove('hidden');
+
         if (creatureIndex < 0 || creatureIndex >= this.creatures.count) return;
 
         this.selectedCreatureIndex = creatureIndex;
@@ -203,6 +221,8 @@ class CanvasGame {
 
         if (nearestIndex !== -1) {
             this.updateCreatureStatus(nearestIndex);
+        } else {
+            this.clearCreatureSelection();
         }
     }
 
