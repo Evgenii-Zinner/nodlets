@@ -17,6 +17,7 @@ export class ResourceSystem {
         this.gridCols = 0;
         this.gridRows = 0;
         this.nextInCell = new Int32Array(maxResources);
+        this.dirtyGrid = true;
     }
 
     initGrid(worldWidth, worldHeight) {
@@ -50,6 +51,7 @@ export class ResourceSystem {
         this.posY[idx] = y;
         this.type[idx] = type;
         this.amount[idx] = amount;
+        this.dirtyGrid = true;
         return idx;
     }
 
@@ -75,10 +77,12 @@ export class ResourceSystem {
                 if (gx < 0 || gx >= this.gridCols) continue;
                 let idx = this.grid[gy * this.gridCols + gx];
                 while (idx !== -1) {
-                    const dx = this.posX[idx] - x;
-                    const dy = this.posY[idx] - y;
-                    if (dx * dx + dy * dy <= r2) {
-                        callback(idx);
+                    if (idx < this.count) {
+                        const dx = this.posX[idx] - x;
+                        const dy = this.posY[idx] - y;
+                        if (dx * dx + dy * dy <= r2) {
+                            callback(idx);
+                        }
                     }
                     idx = this.nextInCell[idx];
                 }
@@ -88,7 +92,10 @@ export class ResourceSystem {
 
     update(deltaTime, world, energyRate = 10) {
         if (!this.grid) this.initGrid(world.width, world.height);
-        this.updateGrid();
+        if (this.dirtyGrid) {
+            this.updateGrid();
+            this.dirtyGrid = false;
+        }
 
         // Resources replenishment
         for (let i = 0; i < this.count; i++) {
@@ -115,6 +122,7 @@ export class ResourceSystem {
         }
 
         this.count--;
+        this.dirtyGrid = true;
     }
 }
 
