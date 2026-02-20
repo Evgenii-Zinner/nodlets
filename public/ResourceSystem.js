@@ -9,10 +9,10 @@ export class ResourceSystem {
         this.posX = new Float32Array(maxResources);
         this.posY = new Float32Array(maxResources);
         this.amount = new Float32Array(maxResources);
-        this.type = new Uint8Array(maxResources); // 0: Food (Data), 1: Charge
+        this.type = new Uint8Array(maxResources); // 0: Energy, 1: Charge, 2: Data
 
         // Spatial Grid
-        this.cellSize = 2000;
+        this.cellSize = 200;
         this.grid = null;
         this.gridCols = 0;
         this.gridRows = 0;
@@ -53,6 +53,14 @@ export class ResourceSystem {
         return idx;
     }
 
+    spawnEnergy(x, y) {
+        return this.spawn(x, y, 0, 1000);
+    }
+
+    spawnData(x, y, amount = 100) {
+        return this.spawn(x, y, 1, amount);
+    }
+
     forEachNeighbor(x, y, radius, callback) {
         if (!this.grid) return;
         const x1 = Math.floor((x - radius) / this.cellSize);
@@ -78,16 +86,35 @@ export class ResourceSystem {
         }
     }
 
-    update(deltaTime, world) {
+    update(deltaTime, world, energyRate = 10) {
         if (!this.grid) this.initGrid(world.width, world.height);
         this.updateGrid();
 
-        // Resources might slowly replenish or deplete
+        // Resources replenishment
         for (let i = 0; i < this.count; i++) {
-            if (this.amount[i] < 100) {
-                this.amount[i] += deltaTime * 2; // Slow replenish
-                if (this.amount[i] > 100) this.amount[i] = 100;
+            if (this.type[i] === 0) {
+                // Energy Regeneration
+                if (this.amount[i] < 1000) {
+                    this.amount[i] = Math.min(1000, this.amount[i] + deltaTime * energyRate);
+                }
             }
+            // Data (Type 1) no longer regenerates
         }
     }
+
+    despawn(idx) {
+        if (idx < 0 || idx >= this.count) return;
+
+        // Swap with last
+        const lastIdx = this.count - 1;
+        if (idx !== lastIdx) {
+            this.posX[idx] = this.posX[lastIdx];
+            this.posY[idx] = this.posY[lastIdx];
+            this.amount[idx] = this.amount[lastIdx];
+            this.type[idx] = this.type[lastIdx];
+        }
+
+        this.count--;
+    }
 }
+

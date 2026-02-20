@@ -5,24 +5,26 @@ export class CreatureSystem {
     constructor(maxCreatures = 1000) {
         this.maxCreatures = maxCreatures;
         this.count = 0;
-        
+
         // Flat arrays for creature data
         this.posX = new Float32Array(maxCreatures);
         this.posY = new Float32Array(maxCreatures);
         this.velX = new Float32Array(maxCreatures);
         this.velY = new Float32Array(maxCreatures);
-        this.size = new Float32Array(maxCreatures);
+        this.size = new Uint8Array(maxCreatures);
         this.energy = new Float32Array(maxCreatures);
+        this.intelligence = new Float32Array(maxCreatures);
+        this.maxEnergy = new Uint8Array(maxCreatures);
         this.age = new Float32Array(maxCreatures);
         this.color = new Uint32Array(maxCreatures);
-        
+
         // Behavioral state
         this.wanderAngle = new Float32Array(maxCreatures);
         this.wanderTimer = new Float32Array(maxCreatures);
         this.state = new Uint8Array(maxCreatures);
 
         // Spatial Grid for optimized neighbor lookups (Bolt optimization)
-        this.cellSize = 2000;
+        this.cellSize = 200;
         this.grid = null;
         this.gridCols = 0;
         this.gridRows = 0;
@@ -83,52 +85,91 @@ export class CreatureSystem {
             }
         }
     }
-    
-    spawn(x, y) {
+
+    spawn(x, y, parentParams = null, perks = null) {
         if (this.count >= this.maxCreatures) return -1;
-        
+
         const idx = this.count++;
-        
+
         this.posX[idx] = x;
         this.posY[idx] = y;
         this.velX[idx] = (Math.random() - 0.5) * 20;
         this.velY[idx] = (Math.random() - 0.5) * 20;
-        this.size[idx] = 10 + Math.random() * 10;
-        this.energy[idx] = 100;
+
+        // Default perks if not provided
+        const p = perks || {
+            maxEnergyBoost: 0,
+            positiveMutationChance: 0.05,
+            negativeMutationChance: 0.05
+        };
+
+        // Inheritance & Mutation
+        if (parentParams) {
+            let mutationFactor = 1.0;
+            const rand = Math.random();
+
+            if (rand < p.positiveMutationChance) {
+                mutationFactor = 1.1 + Math.random() * 0.1; // Positive: +10% to +20%
+            } else if (rand < p.positiveMutationChance + p.negativeMutationChance) {
+                mutationFactor = 0.8 + Math.random() * 0.1; // Negative: -10% to -20%
+            } else {
+                mutationFactor = 0.95 + Math.random() * 0.1; // Neutral: +/- 5%
+            }
+
+            this.size[idx] = Math.max(4, Math.min(20, Math.round(parentParams.size * mutationFactor)));
+            this.color[idx] = parentParams.color;
+        } else {
+            this.size[idx] = 8 + Math.random() * 4; // 8-12
+            const colors = [0xBC13FEFF, 0x00F3FFFF, 0x00FF41FF, 0xFF10F0FF];
+            this.color[idx] = colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        const baseMaxEnergy = 80 + Math.floor(Math.random() * 41);
+        this.maxEnergy[idx] = Math.min(255, baseMaxEnergy + p.maxEnergyBoost);
+        this.energy[idx] = 20; // Start with low energy
+        this.intelligence[idx] = 0;
         this.age[idx] = 0;
-        
-        const colors = [0xBC13FEFF, 0x00F3FFFF, 0x00FF41FF, 0xFF10F0FF];
-        this.color[idx] = colors[Math.floor(Math.random() * colors.length)];
-        
+
         this.wanderAngle[idx] = Math.random() * Math.PI * 2;
         this.wanderTimer[idx] = Math.random() * 3;
         this.state[idx] = 1;
-        
+
         return idx;
     }
-    
+
+    despawn(idx) {
+        if (idx < 0 || idx >= this.count) return;
+
+        // Swap and Pop
+        const lastIdx = --this.count;
+        if (idx !== lastIdx) {
+            this.posX[idx] = this.posX[lastIdx];
+            this.posY[idx] = this.posY[lastIdx];
+            this.velX[idx] = this.velX[lastIdx];
+            this.velY[idx] = this.velY[lastIdx];
+            this.size[idx] = this.size[lastIdx];
+            this.energy[idx] = this.energy[lastIdx];
+            this.intelligence[idx] = this.intelligence[lastIdx];
+            this.maxEnergy[idx] = this.maxEnergy[lastIdx];
+            this.age[idx] = this.age[lastIdx];
+            this.color[idx] = this.color[lastIdx];
+            this.wanderAngle[idx] = this.wanderAngle[lastIdx];
+            this.wanderTimer[idx] = this.wanderTimer[lastIdx];
+            this.state[idx] = this.state[lastIdx];
+        }
+    }
+
     update(deltaTime, world) {
         if (!this.grid) this.initGrid(world.width, world.height);
         this.updateGrid();
 
         for (let i = 0; i < this.count; i++) {
             this.age[i] += deltaTime;
-            
-            if (this.state[i] === 1) {
-                this.wanderTimer[i] -= deltaTime;
-                
-                if (this.wanderTimer[i] <= 0) {
-                    this.wanderAngle[i] += (Math.random() - 0.5) * Math.PI;
-                    this.wanderTimer[i] = 1 + Math.random() * 2;
-                    const speed = 30 + Math.random() * 20;
-                    this.velX[i] = Math.cos(this.wanderAngle[i]) * speed;
-                    this.velY[i] = Math.sin(this.wanderAngle[i]) * speed;
-                }
-            }
-            
+
+            // Movement is now directive (handled in game.js AI)
             this.posX[i] += this.velX[i] * deltaTime;
             this.posY[i] += this.velY[i] * deltaTime;
-            
+
             // Keep inside world bounds with soft bounce
             const radius = this.size[i] / 2;
             const minX = radius;
@@ -151,8 +192,9 @@ export class CreatureSystem {
                 this.posY[i] = maxY;
                 this.velY[i] *= -0.6;
             }
-            
-            this.energy[i] -= deltaTime * 0.5;
+
+            // Energy Depletion: Steady drain (1 unit in 10 sec = 0.1/sec)
+            this.energy[i] -= 1 * deltaTime;
             if (this.energy[i] < 0) this.energy[i] = 0;
         }
     }
