@@ -12,3 +12,7 @@
 **Learning:** Spatial partitioning is crucial for AI awareness even at 1000-2000 entities. Without it, the O(N*M) interaction check would take ~1ms-2ms per frame on a decent CPU, but with it, it's nearly free (<0.1ms). Batching Canvas calls reduced frame time by ~30% when many creatures are visible.
 
 **Action:** Always favor spatial grids for any neighbor-based logic in simulations. Use pass-based rendering to minimize expensive state toggles like `shadowBlur`.
+
+## 2025-05-15 - Lazy Spatial Grid & Swap-and-Pop Pitfalls
+**Learning:** Rebuilding spatial structures every frame for static entities (Resources) is a massive waste (0.04ms -> 0.01ms gain). However, using "swap-and-pop" removal with lazy updates creates "ghost" entities where the grid points to stale indices.
+**Action:** Always implement a `dirty` flag for static spatial structures. Crucially, when iterating neighbors, always check `if (idx < count)` to filter out ghosts from the stale grid.
