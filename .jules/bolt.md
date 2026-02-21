@@ -16,3 +16,11 @@
 ## 2025-05-15 - Lazy Spatial Grid & Swap-and-Pop Pitfalls
 **Learning:** Rebuilding spatial structures every frame for static entities (Resources) is a massive waste (0.04ms -> 0.01ms gain). However, using "swap-and-pop" removal with lazy updates creates "ghost" entities where the grid points to stale indices.
 **Action:** Always implement a `dirty` flag for static spatial structures. Crucially, when iterating neighbors, always check `if (idx < count)` to filter out ghosts from the stale grid.
+
+## 2025-05-15 - Optimizing High-Frequency UI with Sprites
+**Learning:** Drawing thousands of dynamic  shapes per frame (like health bars) is a major performance killer due to geometry reconstruction overhead.
+**Action:** Always prefer using a single 1x1 white pixel texture () for simple rectangular UI elements attached to entities. Use , , , and  to manipulate it. This batches draw calls and avoids geometry uploads.
+
+## 2025-05-15 - Optimizing High-Frequency UI with Sprites
+**Learning:** Drawing thousands of dynamic `PIXI.Graphics` shapes per frame (like health bars) is a major performance killer due to geometry reconstruction overhead.
+**Action:** Always prefer using a single 1x1 white pixel texture (`PIXI.Sprite`) for simple rectangular UI elements attached to entities. Use `tint`, `width`, `height`, and `position` to manipulate it. This batches draw calls and avoids geometry uploads.

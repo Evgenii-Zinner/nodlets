@@ -100,6 +100,10 @@ export class Renderer {
         }
         hubGfx.poly(hexPoints).fill(0xFFFFFF);
         this.hubTexture = this.app.renderer.generateTexture(hubGfx);
+
+        // Pixel texture for bars
+        const pixelGfx = new PIXI.Graphics().rect(0, 0, 1, 1).fill(0xFFFFFF);
+        this.pixelTexture = this.app.renderer.generateTexture(pixelGfx);
     }
 
     update(camera, hubs, nodlets, resources, options = {}) {
@@ -278,10 +282,12 @@ export class Renderer {
             bars.name = 'bars';
             root.addChild(bars);
 
-            const bg = new PIXI.Graphics();
+            const bg = new PIXI.Sprite(this.pixelTexture);
             bg.name = 'bg';
-            const fill = new PIXI.Graphics();
+            bg.anchor.set(0.5, 1.0);
+            const fill = new PIXI.Sprite(this.pixelTexture);
             fill.name = 'fill';
+            fill.anchor.set(0.5, 1.0);
             bars.addChild(bg);
             bars.addChild(fill);
 
@@ -330,17 +336,25 @@ export class Renderer {
                     const dataPercent = nodlets.carriedData[i] / nodlets.maxDataCapacity[i];
                     const barWidth = nodlets.size[i];
                     const barHeight = 2;
+                    const yOffset = -nodlets.size[i]; // Bottom of the bar is top of the nodlet (radius approx)
 
                     const bg = bars.getChildByName('bg');
                     const fill = bars.getChildByName('fill');
 
-                    bg.clear().rect(-barWidth / 2, -nodlets.size[i] - barHeight, barWidth, barHeight)
-                        .fill({ color: 0x000000, alpha: 0.5 });
+                    // Update BG
+                    bg.width = barWidth;
+                    bg.height = barHeight;
+                    bg.position.set(0, yOffset);
+                    bg.tint = 0x000000;
+                    bg.alpha = 0.5;
 
                     // Cyan for data
                     const dataColor = 0x00F3FF;
-                    fill.clear().rect(-barWidth / 2, -nodlets.size[i] - barHeight, barWidth * dataPercent, barHeight)
-                        .fill(dataColor);
+                    fill.width = barWidth * dataPercent;
+                    fill.height = barHeight;
+                    fill.anchor.set(0, 1.0);
+                    fill.position.set(-barWidth / 2, yOffset);
+                    fill.tint = dataColor;
                 } else {
                     bars.visible = false;
                 }
