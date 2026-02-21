@@ -7,7 +7,8 @@ export class Renderer {
         this.world = world;
 
         this.app = new PIXI.Application();
-        this.creatureSprites = [];
+        this.hubSprites = [];
+        this.nodletSprites = [];
         this.resourceSprites = [];
     }
 
@@ -32,8 +33,11 @@ export class Renderer {
         this.resourceContainer = new PIXI.Container();
         this.worldContainer.addChild(this.resourceContainer);
 
-        this.creatureContainer = new PIXI.Container();
-        this.worldContainer.addChild(this.creatureContainer);
+        this.hubContainer = new PIXI.Container();
+        this.worldContainer.addChild(this.hubContainer);
+
+        this.nodletContainer = new PIXI.Container();
+        this.worldContainer.addChild(this.nodletContainer);
 
         this.debugGraphics = new PIXI.Graphics();
         this.app.stage.addChild(this.debugGraphics);
@@ -42,13 +46,19 @@ export class Renderer {
     }
 
     createTemplates() {
-        // Creature texture
-        const creatureGfx = new PIXI.Graphics()
+        // Nodlet texture
+        const nodletGfx = new PIXI.Graphics()
             .circle(0, 0, 10)
             .fill(0xFFFFFF);
-        this.creatureTexture = this.app.renderer.generateTexture(creatureGfx);
+        this.nodletTexture = this.app.renderer.generateTexture(nodletGfx);
 
-        // Energy texture
+        // Data texture
+        const dataGfx = new PIXI.Graphics()
+            .rect(-7.5, -7.5, 15, 15)
+            .fill({ color: 0x00F3FF, alpha: 0.8 });
+        this.dataTexture = this.app.renderer.generateTexture(dataGfx);
+
+        // Energy texture (keeping just in case, though unused)
         const energyGfx = new PIXI.Graphics()
             .moveTo(0, -15)
             .lineTo(15, 0)
@@ -58,21 +68,29 @@ export class Renderer {
             .fill({ color: 0x00FF41, alpha: 0.8 });
         this.energyTexture = this.app.renderer.generateTexture(energyGfx);
 
-        // Data texture
-        const dataGfx = new PIXI.Graphics()
-            .rect(-7.5, -7.5, 15, 15)
-            .fill({ color: 0x00F3FF, alpha: 0.8 });
-        this.dataTexture = this.app.renderer.generateTexture(dataGfx);
+        // Hub Hexagon texture
+        const hubGfx = new PIXI.Graphics();
+        const hexRadius = 20;
+        const hexPoints = [];
+        for (let i = 0; i < 6; i++) {
+            const angle_deg = 60 * i - 30;
+            const angle_rad = Math.PI / 180 * angle_deg;
+            hexPoints.push(hexRadius * Math.cos(angle_rad));
+            hexPoints.push(hexRadius * Math.sin(angle_rad));
+        }
+        hubGfx.poly(hexPoints).fill(0xFFFFFF);
+        this.hubTexture = this.app.renderer.generateTexture(hubGfx);
     }
 
-    update(camera, creatures, resources) {
+    update(camera, hubs, nodlets, resources) {
         this.worldContainer.scale.set(camera.zoom);
         this.worldContainer.position.set(-camera.x * camera.zoom, -camera.y * camera.zoom);
 
         this.drawGrid(camera);
         this.updateResources(resources);
-        this.updateCreatures(creatures, camera);
-        this.drawDebug(camera, creatures.count);
+        this.updateHubs(hubs);
+        this.updateNodlets(nodlets, camera);
+        this.drawDebug(camera, hubs.count, nodlets.count);
     }
 
     drawGrid(camera) {
@@ -124,16 +142,62 @@ export class Renderer {
         }
     }
 
-    updateCreatures(creatures, camera) {
-        // Tweakable Variables for Juice
+    updateHubs(hubs) {
+        while (this.hubSprites.length < hubs.count) {
+            const root = new PIXI.Container();
+
+            const body = new PIXI.Sprite(this.hubTexture);
+            body.name = 'body';
+            body.anchor.set(0.5);
+            root.addChild(body);
+
+            const text = new PIXI.Text({
+                text: 'Lvl 1',
+                style: {
+                    fontFamily: 'Orbitron, monospace',
+                    fontSize: 16,
+                    fill: 0xFFFFFF,
+                    align: 'center',
+                }
+            });
+            text.name = 'text';
+            text.anchor.set(0.5);
+            root.addChild(text);
+
+            this.hubContainer.addChild(root);
+            this.hubSprites.push(root);
+        }
+
+        for (let i = 0; i < this.hubSprites.length; i++) {
+            const root = this.hubSprites[i];
+
+            if (i < hubs.count) {
+                root.visible = true;
+                root.position.set(hubs.posX[i], hubs.posY[i]);
+
+                const body = root.getChildByName('body');
+                const scale = hubs.size[i] / 20.0;
+                body.scale.set(scale);
+
+                const colorInt = hubs.color[i];
+                body.tint = (colorInt >> 8) & 0xFFFFFF;
+
+                const text = root.getChildByName('text');
+                text.text = `Lvl ${hubs.level[i]}`;
+            } else {
+                root.visible = false;
+            }
+        }
+    }
+
+    updateNodlets(nodlets, camera) {
         const SQUASH_FACTOR = 0.005;
         const MAX_SQUASH = 1.6; // Max stretch
 
-        // Grow pool if needed
-        while (this.creatureSprites.length < creatures.count) {
+        while (this.nodletSprites.length < nodlets.count) {
             const root = new PIXI.Container();
 
-            const body = new PIXI.Sprite(this.creatureTexture);
+            const body = new PIXI.Sprite(this.nodletTexture);
             body.name = 'body';
             body.anchor.set(0.5);
             root.addChild(body);
@@ -150,61 +214,62 @@ export class Renderer {
             bars.addChild(bg);
             bars.addChild(fill);
 
-            this.creatureContainer.addChild(root);
-            this.creatureSprites.push(root);
+            this.nodletContainer.addChild(root);
+            this.nodletSprites.push(root);
         }
 
-        // Sync sprites
-        for (let i = 0; i < this.creatureSprites.length; i++) {
-            const root = this.creatureSprites[i];
+        for (let i = 0; i < this.nodletSprites.length; i++) {
+            const root = this.nodletSprites[i];
 
-            if (i < creatures.count) {
+            if (i < nodlets.count) {
                 root.visible = true;
-                root.position.set(creatures.posX[i], creatures.posY[i]);
+                root.position.set(nodlets.posX[i], nodlets.posY[i]);
 
                 const body = root.getChildByName('body');
                 const bars = root.getChildByName('bars');
 
-                const vx = creatures.velX[i];
-                const vy = creatures.velY[i];
+                const vx = nodlets.velX[i];
+                const vy = nodlets.velY[i];
                 const speed = Math.sqrt(vx * vx + vy * vy);
 
-                // Squash and Stretch based on Speed
-                // Stretch in direction of movement (X locally when rotated), Squash perpendicular (Y locally)
                 const stretch = Math.min(MAX_SQUASH, 1.0 + (speed * SQUASH_FACTOR));
-                const squash = 1.0 / stretch; // Maintain volume
+                const squash = 1.0 / stretch;
 
-                // Base size
-                const baseSize = creatures.size[i];
-                // Apply stretch to width/height to bypass global scale inheritance confusion
+                const baseSize = nodlets.size[i];
                 body.width = baseSize * stretch;
                 body.height = baseSize * squash;
 
-                // Rotate body to face velocity vector
                 if (speed > 0.1) {
                     body.rotation = Math.atan2(vy, vx);
                 }
 
-                const colorInt = creatures.color[i];
+                // If returning with data, glow or pulsate a bit
+                if (nodlets.state[i] === 1) {
+                    const pulse = 1.0 + Math.sin(performance.now() * 0.01) * 0.2;
+                    body.width *= pulse;
+                    body.height *= pulse;
+                }
+
+                const colorInt = nodlets.color[i];
                 body.tint = (colorInt >> 8) & 0xFFFFFF;
 
                 if (camera.zoom > 0.5) {
                     bars.visible = true;
-                    // Reset bars rotation opposite to root if root rotated, or just don't rotate root.
-                    // We applied rotation to `body`, so `bars` stay unrotated implicitly.
-                    const energyPercent = creatures.energy[i] / creatures.maxEnergy[i];
-                    const barWidth = creatures.size[i];
+                    // Draw Data Bar instead of Energy
+                    const dataPercent = nodlets.carriedData[i] / nodlets.maxDataCapacity[i];
+                    const barWidth = nodlets.size[i];
                     const barHeight = 2;
 
                     const bg = bars.getChildByName('bg');
                     const fill = bars.getChildByName('fill');
 
-                    bg.clear().rect(-barWidth / 2, -creatures.size[i] - barHeight, barWidth, barHeight)
+                    bg.clear().rect(-barWidth / 2, -nodlets.size[i] - barHeight, barWidth, barHeight)
                         .fill({ color: 0x000000, alpha: 0.5 });
 
-                    const energyColor = energyPercent > 0.5 ? 0x00FF41 : energyPercent > 0.25 ? 0x00F3FF : 0xBC13FE;
-                    fill.clear().rect(-barWidth / 2, -creatures.size[i] - barHeight, barWidth * energyPercent, barHeight)
-                        .fill(energyColor);
+                    // Cyan for data
+                    const dataColor = 0x00F3FF;
+                    fill.clear().rect(-barWidth / 2, -nodlets.size[i] - barHeight, barWidth * dataPercent, barHeight)
+                        .fill(dataColor);
                 } else {
                     bars.visible = false;
                 }
@@ -214,7 +279,7 @@ export class Renderer {
         }
     }
 
-    drawDebug(camera, creatureCount) {
+    drawDebug(camera, hubCount, nodletCount) {
         this.debugGraphics.clear();
         if (!this.debugText) {
             this.debugText = new PIXI.Text({
@@ -230,11 +295,10 @@ export class Renderer {
 
         this.debugText.text = `Camera: (${Math.round(camera.x)}, ${Math.round(camera.y)})\n` +
             `Zoom: ${Math.round(camera.zoom * 100)}%\n` +
-            `Creatures: ${creatureCount}`;
-        this.debugText.position.set(10, this.app.screen.height - 60);
+            `Hubs: ${hubCount}\n` +
+            `Nodlets: ${nodletCount}`;
+        this.debugText.position.set(10, this.app.screen.height - 80);
     }
 
     clear() { }
 }
-
-

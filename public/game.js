@@ -1,9 +1,10 @@
 /**
- * Canvas Game - Life Simulation with Creatures
+ * Canvas Game - Life Simulation with Hubs and Nodlets
  * EZ Space - Tactical Cyberpunk Edition
  */
 
-import { CreatureSystem } from './CreatureSystem.js';
+import { HubSystem } from './HubSystem.js';
+import { NodletSystem } from './NodletSystem.js';
 import { ResourceSystem } from './ResourceSystem.js';
 import { UpgradeSystem } from './UpgradeSystem.js';
 import { Camera } from './Camera.js';
@@ -26,10 +27,10 @@ class CanvasGame {
         };
 
         this.renderer = new Renderer(this.colors, this.world);
-        this.creatures = new CreatureSystem(10000);
+        this.hubs = new HubSystem(100);
+        this.nodlets = new NodletSystem(10000);
         this.resources = new ResourceSystem(2000);
 
-        // Input needs camera, which is created after renderer init
         this.camera = null;
         this.input = null;
 
@@ -37,7 +38,7 @@ class CanvasGame {
         this.updateAccumulator = 0;
         this.fixedTimeStep = 1 / 60;
 
-        this.selectedCreatureIndex = -1;
+        this.selectedNodletIndex = -1;
         this.totalDataConsumed = 0;
 
         this.upgrades = new UpgradeSystem();
@@ -48,12 +49,9 @@ class CanvasGame {
     async init() {
         await this.renderer.init(this.container);
 
-
-        // Accessibility for canvas
         const newCanvas = this.renderer.app.canvas;
         newCanvas.setAttribute('role', 'img');
         newCanvas.setAttribute('aria-label', 'Simulation Canvas');
-// Remove the old canvas if it exists (index.html has it)
         const oldCanvas = document.getElementById('gameCanvas');
         if (oldCanvas) oldCanvas.remove();
 
@@ -67,51 +65,19 @@ class CanvasGame {
 
         this.bindUpgradeEvents();
 
-        this.spawnInitialCreatures();
+        this.spawnInitialHubs();
         this.spawnInitialResources();
         this.gameLoop();
     }
 
-    spawnInitialCreatures() {
+    spawnInitialHubs() {
         const centerX = this.world.width / 2;
         const centerY = this.world.height / 2;
-        const radius = 300;
-
-        for (let i = 0; i < 50; i++) {
-            const angle = (i / 5) * Math.PI * 2;
-            const x = centerX + Math.cos(angle) * radius;
-            const y = centerY + Math.sin(angle) * radius;
-            this.creatures.spawn(x, y);
-        }
+        this.hubs.spawn(centerX, centerY);
     }
 
     spawnInitialResources() {
-        const centerX = this.world.width / 2;
-        const centerY = this.world.height / 2;
-        const maxDist = Math.max(this.world.width, this.world.height) / 2;
-
-        // 1. Center Hub (Single Energy Source)
-        this.resources.spawnEnergy(centerX, centerY);
-
-        // 2. Star Vectors (8 directions)
-        const directions = [
-            { dx: 1, dy: 0 }, { dx: -1, dy: 0 },   // Sides
-            { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
-            { dx: 0.707, dy: 0.707 }, { dx: -0.707, dy: 0.707 }, // Diagonals
-            { dx: 0.707, dy: -0.707 }, { dx: -0.707, dy: -0.707 }
-        ];
-
-        directions.forEach(dir => {
-            // Spawn single points along the vector at equal distances
-            for (let step = 1; step <= 8; step++) {
-                const dist = step * (maxDist / 10);
-                const x = centerX + dir.dx * dist;
-                const y = centerY + dir.dy * dist;
-                this.resources.spawnEnergy(x, y);
-            }
-        });
-
-        // 3. Data Filling
+        // Data Filling
         for (let i = 0; i < 500; i++) {
             const x = Math.random() * this.world.width;
             const y = Math.random() * this.world.height;
@@ -153,48 +119,48 @@ class CanvasGame {
         }
     }
 
-    // ... rest of the status methods stay mostly same ...
-    clearCreatureSelection() {
-        this.selectedCreatureIndex = -1;
+    clearNodletSelection() {
+        this.selectedNodletIndex = -1;
         const empty = document.getElementById('creature-empty');
         const details = document.getElementById('creature-details');
         if (empty) empty.classList.remove('hidden');
         if (details) details.classList.add('hidden');
     }
 
-    updateCreatureStatus(creatureIndex) {
+    updateNodletStatus(nodletIndex) {
         const empty = document.getElementById('creature-empty');
         const details = document.getElementById('creature-details');
         if (empty) empty.classList.add('hidden');
         if (details) details.classList.remove('hidden');
 
-        if (creatureIndex < 0 || creatureIndex >= this.creatures.count) return;
+        if (nodletIndex < 0 || nodletIndex >= this.nodlets.count) return;
 
-        this.selectedCreatureIndex = creatureIndex;
+        this.selectedNodletIndex = nodletIndex;
 
         const stateEl = document.getElementById('creatureState');
         const ageEl = document.getElementById('creatureAge');
-        const energyEl = document.getElementById('creatureStateEnergy');
-        const maxEnergyEl = document.getElementById('creatureMaxEnergy');
-        const intelEl = document.getElementById('creatureIntelligence');
+        const energyContainer = document.getElementById('energyItem'); // Assuming we hide this later in HTML
+        if (energyContainer) energyContainer.style.display = 'none';
+
+        const dataCountEl = document.getElementById('creatureIntelligence');
         const intentEl = document.getElementById('creatureIntent');
 
-        const state = this.creatures.state[creatureIndex];
-        const stateLabels = ['Seeking Energy', 'Seeking Data', 'Evolution Ready'];
+        const state = this.nodlets.state[nodletIndex];
+        const stateLabels = ['Seeking Data', 'Returning to Hub'];
 
-        stateEl.textContent = state === 2 ? 'Evolving' : 'Active';
-        stateEl.className = `status-state ${state === 2 ? 'idle' : 'wandering'}`;
+        stateEl.textContent = state === 1 ? 'Returning' : 'Seeking';
+        stateEl.className = `status-state ${state === 1 ? 'charging' : 'wandering'}`;
 
-        ageEl.textContent = Math.round(this.creatures.age[creatureIndex]) + 's';
+        ageEl.textContent = Math.round(this.nodlets.age[nodletIndex]) + 's';
         intentEl.textContent = stateLabels[state] || 'None';
-        energyEl.textContent = Math.round(this.creatures.energy[creatureIndex]);
-        maxEnergyEl.textContent = this.creatures.maxEnergy[creatureIndex];
-        intelEl.textContent = Math.round(this.creatures.intelligence[creatureIndex]) + '%';
+
+        // Repurposing Intelligence UI for Data Carrying Capacity
+        dataCountEl.textContent = Math.round(this.nodlets.carriedData[nodletIndex]) + ' / ' + Math.round(this.nodlets.maxDataCapacity[nodletIndex]);
     }
 
-    updateCreatureCount() {
+    updateCounts() {
         const countEl = document.getElementById('creatureCount');
-        if (countEl) countEl.textContent = this.creatures.count;
+        if (countEl) countEl.textContent = this.nodlets.count;
     }
 
     updateGlobalStats() {
@@ -208,9 +174,9 @@ class CanvasGame {
         let nearestIndex = -1;
         let minDist = 30 / this.camera.zoom;
 
-        this.creatures.forEachNeighbor(worldPos.x, worldPos.y, 50, (idx) => {
-            const dx = this.creatures.posX[idx] - worldPos.x;
-            const dy = this.creatures.posY[idx] - worldPos.y;
+        this.nodlets.forEachNeighbor(worldPos.x, worldPos.y, 50, (idx) => {
+            const dx = this.nodlets.posX[idx] - worldPos.x;
+            const dy = this.nodlets.posY[idx] - worldPos.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             if (dist < minDist) {
@@ -220,14 +186,13 @@ class CanvasGame {
         });
 
         if (nearestIndex !== -1) {
-            this.updateCreatureStatus(nearestIndex);
+            this.updateNodletStatus(nearestIndex);
         } else {
-            this.clearCreatureSelection();
+            this.clearNodletSelection();
         }
     }
 
     update(deltaTime) {
-        // Upgrade Check
         if (this.upgrades.checkMilestone(this.totalDataConsumed)) {
             const btn = document.getElementById('upgradeBtn');
             if (btn) btn.classList.remove('hidden');
@@ -240,74 +205,57 @@ class CanvasGame {
             );
         }
 
-        this.creatures.update(deltaTime, this.world);
-        this.resources.update(deltaTime, this.world, this.upgrades.perks.energyResetRate);
+        // Just maintain 500 data points on screen loosely
+        if (this.resources.count < 500 && Math.random() < 0.1) {
+            this.resources.spawnData(
+                Math.random() * this.world.width,
+                Math.random() * this.world.height
+            );
+        }
 
-        for (let i = 0; i < this.creatures.count; i++) {
-            const cx = this.creatures.posX[i];
-            const cy = this.creatures.posY[i];
-            const energy = this.creatures.energy[i];
-            const maxEnergy = this.creatures.maxEnergy[i];
-            const intelligence = this.creatures.intelligence[i];
+        this.nodlets.update(deltaTime, this.world);
+        this.resources.update(deltaTime, this.world, 0); // energy reset rate 0
 
-            if (energy <= 0) {
-                this.resources.spawnData(cx, cy, 100);
-                this.creatures.despawn(i);
-                i--;
-                continue;
+        // Hub Loop
+        for (let i = 0; i < this.hubs.count; i++) {
+            // Count active nodlets
+            let active = 0;
+            for (let j = 0; j < this.nodlets.count; j++) {
+                if (this.nodlets.hubId[j] === i) active++;
             }
+            this.hubs.activeNodlets[i] = active;
 
-            if (intelligence >= 100) {
-                this.creatures.spawn(cx + 10, cy + 10, {
-                    size: this.creatures.size[i],
-                    color: this.creatures.color[i]
-                }, this.upgrades.perks);
+            // Spawn to reach capacity
+            if (active < this.hubs.baseNodletCapacity[i]) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = this.hubs.size[i];
+                const nx = this.hubs.posX[i] + Math.cos(angle) * r;
+                const ny = this.hubs.posY[i] + Math.sin(angle) * r;
+                this.nodlets.spawn(nx, ny, i, this.hubs.color[i]);
+            }
+        }
 
-                if (Math.random() < 0.5) {
-                    this.resources.spawnData(cx, cy, 200);
-                    this.creatures.despawn(i);
-                    i--;
+        // Nodlet Loop
+        for (let i = 0; i < this.nodlets.count; i++) {
+            const cx = this.nodlets.posX[i];
+            const cy = this.nodlets.posY[i];
+            const state = this.nodlets.state[i];
+            const carriedData = this.nodlets.carriedData[i];
+            const maxCarry = this.nodlets.maxDataCapacity[i];
+            const hubIdx = this.nodlets.hubId[i];
+
+            if (state === 0) { // Seeking Data
+                if (carriedData >= maxCarry) {
+                    this.nodlets.state[i] = 1;
                     continue;
-                } else {
-                    this.creatures.intelligence[i] = 0;
                 }
-            }
 
-            let searchType = -1;
-            const currentState = this.creatures.state[i];
-
-            if (currentState === 0) {
-                if (energy < maxEnergy - 2) {
-                    searchType = 0;
-                } else {
-                    this.creatures.state[i] = intelligence < 100 ? 1 : 2;
-                    searchType = this.creatures.state[i] === 1 ? 1 : -1;
-                }
-            } else {
-                if (energy < 50) {
-                    this.creatures.state[i] = 0;
-                    searchType = 0;
-                } else if (intelligence < 100) {
-                    this.creatures.state[i] = 1;
-                    searchType = 1;
-                } else {
-                    this.creatures.state[i] = 2;
-                }
-            }
-
-            let foundResource = false;
-            if (searchType !== -1) {
-                let closestDistSq = 300 * 300;
+                let closestDistSq = 500 * 500;
                 let targetResIdx = -1;
 
-                this.resources.forEachNeighbor(cx, cy, 300, (resIdx) => {
-                    if (this.resources.type[resIdx] !== searchType) return;
+                this.resources.forEachNeighbor(cx, cy, 500, (resIdx) => {
+                    if (this.resources.type[resIdx] !== 1) return; // Need data (type 1)
                     if (this.resources.amount[resIdx] <= 0) return;
-
-                    if (searchType === 0) {
-                        const needed = maxEnergy - energy;
-                        if (this.resources.amount[resIdx] < needed) return;
-                    }
 
                     const rx = this.resources.posX[resIdx];
                     const ry = this.resources.posY[resIdx];
@@ -322,60 +270,76 @@ class CanvasGame {
                 });
 
                 if (targetResIdx !== -1) {
-                    foundResource = true;
                     const resIdx = targetResIdx;
                     const rx = this.resources.posX[resIdx];
                     const ry = this.resources.posY[resIdx];
                     const dx = rx - cx;
                     const dy = ry - cy;
 
-                    if (closestDistSq < 900) {
-                        const bite = 25 * deltaTime;
-                        const amount = Math.min(this.resources.amount[resIdx], bite);
+                    if (closestDistSq < 900) { // Harvest range
+                        const bite = 50 * deltaTime;
+                        const amountToTake = Math.min(this.resources.amount[resIdx], bite, maxCarry - carriedData);
 
-                        if (searchType === 0) {
-                            this.creatures.energy[i] = Math.min(maxEnergy, this.creatures.energy[i] + amount);
-                            this.resources.amount[resIdx] -= amount;
-                        } else {
-                            this.creatures.intelligence[i] = Math.min(100, this.creatures.intelligence[i] + amount);
-                            this.resources.amount[resIdx] -= amount;
-                            this.totalDataConsumed += amount;
+                        this.nodlets.carriedData[i] += amountToTake;
+                        this.resources.amount[resIdx] -= amountToTake;
 
-                            if (this.resources.amount[resIdx] <= 0) {
-                                this.resources.despawn(resIdx);
-                            }
+                        if (this.resources.amount[resIdx] <= 0) {
+                            this.resources.despawn(resIdx);
                         }
 
-                        this.creatures.velX[i] *= 0.8;
-                        this.creatures.velY[i] *= 0.8;
-                    } else {
+                        this.nodlets.velX[i] *= 0.8;
+                        this.nodlets.velY[i] *= 0.8;
+                    } else { // Move towards
                         const dist = Math.sqrt(closestDistSq);
-                        const force = (1.0 - dist / 300) * 35 * deltaTime;
-                        this.creatures.velX[i] += (dx / dist) * force;
-                        this.creatures.velY[i] += (dy / dist) * force;
+                        const force = (1.0 - dist / 500) * 45 * deltaTime;
+                        this.nodlets.velX[i] += (dx / dist) * force;
+                        this.nodlets.velY[i] += (dy / dist) * force;
+                    }
+                } else { // Wander
+                    this.nodlets.wanderTimer[i] -= deltaTime;
+                    if (this.nodlets.wanderTimer[i] <= 0) {
+                        this.nodlets.wanderAngle[i] += (Math.random() - 0.5) * Math.PI;
+                        this.nodlets.wanderTimer[i] = 1 + Math.random() * 2;
+                    }
+                    const speed = 50;
+                    this.nodlets.velX[i] += (Math.cos(this.nodlets.wanderAngle[i]) * speed - this.nodlets.velX[i]) * 0.1;
+                    this.nodlets.velY[i] += (Math.sin(this.nodlets.wanderAngle[i]) * speed - this.nodlets.velY[i]) * 0.1;
+                }
+            } else if (state === 1) { // Returning to Hub
+                const hx = this.hubs.posX[hubIdx];
+                const hy = this.hubs.posY[hubIdx];
+                const dx = hx - cx;
+                const dy = hy - cy;
+                const distSq = dx * dx + dy * dy;
+
+                if (distSq < this.hubs.size[hubIdx] * this.hubs.size[hubIdx]) {
+                    // Deposit Data
+                    this.hubs.depositData(hubIdx, carriedData);
+                    this.totalDataConsumed += carriedData;
+                    this.nodlets.carriedData[i] = 0;
+                    this.nodlets.state[i] = 0;
+                    this.nodlets.velX[i] *= 0.1;
+                    this.nodlets.velY[i] *= 0.1;
+                } else {
+                    const dist = Math.sqrt(distSq);
+                    const force = 60 * deltaTime;
+                    this.nodlets.velX[i] += (dx / dist) * force;
+                    this.nodlets.velY[i] += (dy / dist) * force;
+
+                    // Cap speed
+                    const currentSpeed = Math.sqrt(this.nodlets.velX[i] * this.nodlets.velX[i] + this.nodlets.velY[i] * this.nodlets.velY[i]);
+                    if (currentSpeed > 100) {
+                        this.nodlets.velX[i] = (this.nodlets.velX[i] / currentSpeed) * 100;
+                        this.nodlets.velY[i] = (this.nodlets.velY[i] / currentSpeed) * 100;
                     }
                 }
-            }
-
-            if (!foundResource && this.creatures.state[i] !== 2) {
-                this.creatures.wanderTimer[i] -= deltaTime;
-                if (this.creatures.wanderTimer[i] <= 0) {
-                    this.creatures.wanderAngle[i] += (Math.random() - 0.5) * Math.PI;
-                    this.creatures.wanderTimer[i] = 1 + Math.random() * 2;
-                }
-                const speed = 40;
-                this.creatures.velX[i] += (Math.cos(this.creatures.wanderAngle[i]) * speed - this.creatures.velX[i]) * 0.1;
-                this.creatures.velY[i] += (Math.sin(this.creatures.wanderAngle[i]) * speed - this.creatures.velY[i]) * 0.1;
-            } else if (this.creatures.state[i] === 2) {
-                this.creatures.velX[i] *= 0.95;
-                this.creatures.velY[i] *= 0.95;
             }
         }
     }
 
     render() {
         if (this.camera) {
-            this.renderer.update(this.camera, this.creatures, this.resources);
+            this.renderer.update(this.camera, this.hubs, this.nodlets, this.resources);
         }
     }
 
@@ -392,11 +356,11 @@ class CanvasGame {
             this.updateAccumulator -= this.fixedTimeStep;
         }
 
-        if (Math.random() < 0.016) {
-            this.updateCreatureCount();
+        if (Math.random() < 0.05) {
+            this.updateCounts();
             this.updateGlobalStats();
-            if (this.selectedCreatureIndex >= 0) {
-                this.updateCreatureStatus(this.selectedCreatureIndex);
+            if (this.selectedNodletIndex >= 0) {
+                this.updateNodletStatus(this.selectedNodletIndex);
             }
         }
 
