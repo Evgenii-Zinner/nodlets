@@ -10,6 +10,9 @@ export class Renderer {
         this.hubSprites = [];
         this.nodletSprites = [];
         this.resourceSprites = [];
+
+        // Active target circle
+        this.targetGraphics = null;
     }
 
     async init(container) {
@@ -43,6 +46,9 @@ export class Renderer {
         this.nodletContainer = new PIXI.Container();
         this.worldContainer.addChild(this.nodletContainer);
 
+        this.targetGraphics = new PIXI.Graphics();
+        this.worldContainer.addChild(this.targetGraphics);
+
         this.debugGraphics = new PIXI.Graphics();
         this.app.stage.addChild(this.debugGraphics);
 
@@ -62,15 +68,25 @@ export class Renderer {
             .fill({ color: 0x00F3FF, alpha: 0.8 });
         this.dataTexture = this.app.renderer.generateTexture(dataGfx);
 
-        // Server texture (Large Diamond)
-        const serverGfx = new PIXI.Graphics()
-            .moveTo(0, -25)
-            .lineTo(25, 0)
-            .lineTo(0, 25)
-            .lineTo(-25, 0)
+        // Generator Server texture (Large Diamond - Purple)
+        const generatorGfx = new PIXI.Graphics()
+            .moveTo(0, -30)
+            .lineTo(30, 0)
+            .lineTo(0, 30)
+            .lineTo(-30, 0)
             .closePath()
-            .fill({ color: 0x00FF41, alpha: 0.8 });
-        this.serverTexture = this.app.renderer.generateTexture(serverGfx);
+            .fill({ color: 0xFF00FF, alpha: 0.8 }); // Magenta
+        this.generatorTexture = this.app.renderer.generateTexture(generatorGfx);
+
+        // Relay Server texture (Square Diamond - Cyan)
+        const relayGfx = new PIXI.Graphics()
+            .moveTo(0, -20)
+            .lineTo(20, 0)
+            .lineTo(0, 20)
+            .lineTo(-20, 0)
+            .closePath()
+            .fill({ color: 0x00F3FF, alpha: 0.8 });
+        this.relayTexture = this.app.renderer.generateTexture(relayGfx);
 
         // Hub Hexagon texture
         const hubGfx = new PIXI.Graphics();
@@ -93,7 +109,8 @@ export class Renderer {
         this.drawGrid(camera);
         this.drawInfluenceZones(hubs, options.influence || 500);
 
-        this.updateResources(resources);
+        // We need activeTargetServer info from the game state. Let's pass it via options
+        this.updateResources(resources, options.activeTargetServer);
         this.updateHubs(hubs);
         this.updateNodlets(nodlets, camera);
         this.drawDebug(camera, hubs.count, nodlets.count);
@@ -134,7 +151,7 @@ export class Renderer {
         }
     }
 
-    updateResources(resources) {
+    updateResources(resources, activeTargetServer = -1) {
         // Grow pool if needed
         while (this.resourceSprites.length < resources.count) {
             const sprite = new PIXI.Sprite();
@@ -143,16 +160,42 @@ export class Renderer {
             this.resourceSprites.push(sprite);
         }
 
+        // Draw Target highlight
+        this.targetGraphics.clear();
+        if (activeTargetServer !== -1 && activeTargetServer < resources.count) {
+            const tx = resources.posX[activeTargetServer];
+            const ty = resources.posY[activeTargetServer];
+
+            this.targetGraphics.circle(tx, ty, 60)
+                .stroke({ color: 0xFFFFFF, width: 2, alpha: 0.8 });
+            // Add a small spinning crosshair look
+            const time = performance.now() * 0.002;
+            const r = 70;
+            this.targetGraphics.moveTo(tx - r * Math.cos(time), ty - r * Math.sin(time))
+                .lineTo(tx + r * Math.cos(time), ty + r * Math.sin(time));
+            this.targetGraphics.moveTo(tx - r * Math.cos(time + Math.PI / 2), ty - r * Math.sin(time + Math.PI / 2))
+                .lineTo(tx + r * Math.cos(time + Math.PI / 2), ty + r * Math.sin(time + Math.PI / 2))
+                .stroke({ color: 0xFFFFFF, width: 2, alpha: 0.5 });
+        }
+
         // Sync sprites
         for (let i = 0; i < this.resourceSprites.length; i++) {
             const sprite = this.resourceSprites[i];
             if (i < resources.count) {
                 sprite.visible = true;
-                // Type 0 is Server, Type 1 is Packet
-                sprite.texture = resources.type[i] === 0 ? this.serverTexture : this.dataTexture;
+
+                // 0: Generator, 1: Relay, 2: Packet
+                if (resources.type[i] === 0) {
+                    sprite.texture = this.generatorTexture;
+                } else if (resources.type[i] === 1) {
+                    sprite.texture = this.relayTexture;
+                } else {
+                    sprite.texture = this.dataTexture;
+                }
+
                 sprite.position.set(resources.posX[i], resources.posY[i]);
 
-                if (resources.type[i] === 0) {
+                if (resources.type[i] === 0 || resources.type[i] === 1) {
                     // Scale server based on current amount vs max amount
                     const scale = 0.5 + (resources.amount[i] / resources.maxAmount[i]) * 0.5;
                     sprite.scale.set(scale);

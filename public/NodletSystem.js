@@ -24,6 +24,8 @@ export class NodletSystem {
         // Behavioral state
         this.wanderAngle = new Float32Array(maxNodlets);
         this.wanderTimer = new Float32Array(maxNodlets);
+        this.orbitRadius = new Float32Array(maxNodlets);
+        this.orbitDirection = new Float32Array(maxNodlets); // 1 or -1
         // State: 0 = Seeking Data, 1 = Returning to Hub
         this.state = new Uint8Array(maxNodlets);
 
@@ -107,6 +109,8 @@ export class NodletSystem {
 
         this.wanderAngle[idx] = Math.random() * Math.PI * 2;
         this.wanderTimer[idx] = Math.random() * 3;
+        this.orbitRadius[idx] = 40 + Math.random() * 60; // Random radius between 40 and 100
+        this.orbitDirection[idx] = Math.random() > 0.5 ? 1 : -1; // Random clockwise or counter-clockwise
         this.state[idx] = 0; // Seeking Data
 
         return idx;
@@ -130,6 +134,8 @@ export class NodletSystem {
             this.hubId[idx] = this.hubId[lastIdx];
             this.wanderAngle[idx] = this.wanderAngle[lastIdx];
             this.wanderTimer[idx] = this.wanderTimer[lastIdx];
+            this.orbitRadius[idx] = this.orbitRadius[lastIdx];
+            this.orbitDirection[idx] = this.orbitDirection[lastIdx];
             this.state[idx] = this.state[lastIdx];
         }
     }

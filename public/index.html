@@ -45,13 +45,14 @@
                 <!-- Server Details -->
                 <div id="server-details" class="hidden" style="display: flex; flex-direction: column; gap: 8px;">
                     <div class="status-item">
-                        <span class="status-label">Type:</span>
-                        <span class="status-value" style="color: #00F3FF;">Data Server</span>
+                        <span class="status-label">Class:</span>
+                        <span class="status-value" id="serverTypeLabel" style="color: #00F3FF;">Data Server</span>
                     </div>
                     <div class="status-item">
                         <span class="status-label">Data Available:</span>
                         <span class="status-value"><span id="serverDataAmount">-</span> / <span id="serverDataMax">-</span></span>
                     </div>
+                    <button id="setTargetBtn" class="upgrade-btn" style="margin-top: 5px; font-size: 10px; padding: 5px;">TARGET ACQUIRED</button>
                 </div></div>
             <div class="population-panel">
                 Nodlets: <span id="creatureCount">0</span>

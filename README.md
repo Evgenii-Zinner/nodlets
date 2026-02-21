@@ -1,39 +1,30 @@
-# Nodlets
+# Nodlets 👾
 
-HTML5 Canvas game hosted on Cloudflare Workers.
+[Play live on nodlets.ezinner.com](https://nodlets.ezinner.com/)
+
+> **Ever wondered what happens to lost packets?**
+
+You know the ones. The ones that disappear into the void when your ping spikes to 999ms, or when that risky text message mysteriously fails to send. 
+
+They aren't lost. They are snatched up by **Nodlets**.
+
+Nodlets are tiny digital creatures that live in the liminal spaces spanning across the digital ether. They zip around the network, intercepting dropped data packets and hoarding them at their home servers. 
+
+I made this visualization tool so that we can finally observe these elusive creatures in their natural habitat. And the best part? We've managed to wrest control over one of their homes! 
 
 ## Features
 
-- **Responsive Canvas**: Automatically scales to screen size
-- **Zoom Controls**: Mouse wheel, buttons, or keyboard (+/-)
-- **Pan Navigation**: Click and drag, or use arrow keys/WASD
-- **Tactical Cyberpunk Theme**: Neon purple/cyan aesthetic
-- **Plain World**: Simple ground with grid overlay
+- **Observe Digital Nature:** Watch as Nodlets swarm and intercept data packets traveling between Generators and Relays.
+- **Play Network Admin:** Take control of a Nodlet Home Hub. Direct your swarm to target specific servers to optimize data interception.
+- **Upgrade Your Swarm:** Harvest enough lost data and you can upgrade your Hub! You can increase your Nodlets' carrying capacity, boost their orbital speed, expand your Hub's influence radius, or simply print more Nodlets!
 
-## Controls
+## How to Play
 
-- **Mouse Wheel**: Zoom in/out
-- **Click & Drag**: Pan camera
-- **Arrow Keys / WASD**: Move camera
-- **+/-**: Zoom in/out
-- **Buttons**: UI controls for zoom
+1. Open this visualizer.
+2. Watch the Nodlets pour out of your central Hub.
+3. Click on any Server (the glowing diamonds) within your Hub's blue influence ring.
+4. Click **"SET AS TARGET"** to direct your Nodlet swarm to orbit that server.
+5. Watch them intercept passing packets! (Generators are purple and rarely emit. Relays are cyan and emit frequently. Choose your hunting grounds wisely!)
+6. Use the gathered data (click the big Upgrade Star button in the corner) to improve your swarm's efficiency.
 
-## Development
-
-```bash
-# Install dependencies
-bun install
-
-# Run locally
-bun run dev
-
-# Deploy to Cloudflare
-bun run deploy
-```
-
-## Tech Stack
-
-- Vanilla HTML5, CSS3, JavaScript (ES6+)
-- Canvas API for rendering
-- Cloudflare Workers for hosting
-- EZ Space "Tactical Cyberpunk" design system
+*No actual network traffic was harmed in the making of this visualization... I think.*

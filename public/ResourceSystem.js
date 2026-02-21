@@ -6,7 +6,7 @@ export class ResourceSystem {
         this.maxResources = maxResources;
         this.count = 0;
 
-        // 0: Server, 1: Packet
+        // 0: Generator Server, 1: Relay Server, 2: Packet
         this.type = new Uint8Array(maxResources);
         this.posX = new Float32Array(maxResources);
         this.posY = new Float32Array(maxResources);
@@ -53,11 +53,11 @@ export class ResourceSystem {
         }
     }
 
-    spawnServer(x, y, maxAmount = 1000) {
+    spawnServer(x, y, maxAmount = 1000, type = 0) {
         if (this.count >= this.maxResources) return -1;
         const idx = this.count++;
 
-        this.type[idx] = 0; // Server
+        this.type[idx] = type; // 0 = Generator, 1 = Relay
         this.posX[idx] = x;
         this.posY[idx] = y;
         this.amount[idx] = maxAmount;
@@ -71,7 +71,7 @@ export class ResourceSystem {
         if (this.count >= this.maxResources) return -1;
         const idx = this.count++;
 
-        this.type[idx] = 1; // Packet
+        this.type[idx] = 2; // Packet
         this.posX[idx] = startX;
         this.posY[idx] = startY;
         this.amount[idx] = amount;
@@ -115,22 +115,32 @@ export class ResourceSystem {
         if (!this.grid) this.initGrid(world.width, world.height);
 
         for (let i = 0; i < this.count; i++) {
-            if (this.type[i] === 0) {
-                // Server Regeneration
+            if (this.type[i] === 0) { // Generator Regeneration
                 if (this.amount[i] < this.maxAmount[i]) {
                     this.amount[i] += 10 * deltaTime; // 10 bytes per second regen
                     if (this.amount[i] > this.maxAmount[i]) {
                         this.amount[i] = this.maxAmount[i];
                     }
                 }
-            } else if (this.type[i] === 1) {
-                // Packet Movement
+            } else if (this.type[i] === 2) { // Packet Movement
                 const dx = this.targetX[i] - this.posX[i];
                 const dy = this.targetY[i] - this.posY[i];
                 const distSq = dx * dx + dy * dy;
 
-                // If it reached the destination server, despawn it
-                if (distSq < 100) { // arbitrary small arrival radius
+                // If it reached the destination (arbitrary small radius 100)
+                if (distSq < 100) {
+                    // Find the destination server to add data to it (if it has capacity)
+                    this.forEachNeighbor(this.posX[i], this.posY[i], 50, (neighborIdx) => {
+                        if (this.type[neighborIdx] === 0 || this.type[neighborIdx] === 1) {
+                            if (this.amount[neighborIdx] < this.maxAmount[neighborIdx]) {
+                                this.amount[neighborIdx] += this.amount[i];
+                                if (this.amount[neighborIdx] > this.maxAmount[neighborIdx]) {
+                                    this.amount[neighborIdx] = this.maxAmount[neighborIdx];
+                                }
+                            }
+                        }
+                    });
+
                     this.despawn(i);
                     i--;
                     continue;

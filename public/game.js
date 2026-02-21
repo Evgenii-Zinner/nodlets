@@ -37,8 +37,9 @@ class CanvasGame {
         this.lastFrameTime = performance.now();
         this.updateAccumulator = 0;
         this.fixedTimeStep = 1 / 60;
-
         this.selectedNodletIndex = -1;
+        this.selectedServerIndex = -1;
+        this.activeTargetServer = -1; // Global Target
 
         this.upgrades = new UpgradeSystem();
 
@@ -66,6 +67,7 @@ class CanvasGame {
 
         this.spawnInitialHubs();
         this.spawnInitialServers();
+        this.bindTargetEvent();
         this.gameLoop();
     }
 
@@ -76,11 +78,13 @@ class CanvasGame {
     }
 
     spawnInitialServers() {
-        // Spawn 30 servers randomly around the map
+        // Spawn exactly 10 Generators (type 0) and 20 Relays (type 1)
         for (let i = 0; i < 30; i++) {
             const x = 500 + Math.random() * (this.world.width - 1000);
             const y = 500 + Math.random() * (this.world.height - 1000);
-            this.resources.spawnServer(x, y, 2000 + Math.random() * 2000);
+            const amount = 2000 + Math.random() * 2000;
+            const type = i < 10 ? 0 : 1; // 10 Generators, 20 Relays
+            this.resources.spawnServer(x, y, amount, type);
         }
     }
 
@@ -104,6 +108,18 @@ class CanvasGame {
         }
     }
 
+    bindTargetEvent() {
+        const btn = document.getElementById('setTargetBtn');
+        if (btn) {
+            btn.addEventListener('click', () => {
+                if (this.selectedServerIndex !== -1) {
+                    this.activeTargetServer = this.selectedServerIndex;
+                    console.log("Target Locked:", this.activeTargetServer);
+                }
+            });
+        }
+    }
+
     renderUpgradeTree() {
         // This will bind to the new HTML layout
         const ptsEl = document.getElementById('availablePoints');
@@ -115,6 +131,7 @@ class CanvasGame {
             const btn = document.getElementById(`btn_${this.upgrades.tree.tier1.nodes[k].id}`);
             if (btn) {
                 const node = this.upgrades.tree.tier1.nodes[k];
+                btn.textContent = node.icon || "?";
                 if (node.unlocked) {
                     btn.className = "node unlocked";
                     btn.onclick = null;
@@ -139,6 +156,7 @@ class CanvasGame {
             const btn = document.getElementById(`btn_${this.upgrades.tree.tier2.nodes[k].id}`);
             if (btn) {
                 const node = this.upgrades.tree.tier2.nodes[k];
+                btn.textContent = node.icon || "?";
                 if (node.unlocked) {
                     btn.className = "node unlocked";
                     btn.onclick = null;
@@ -231,11 +249,46 @@ class CanvasGame {
         if (serverIndex < 0 || serverIndex >= this.resources.count) return;
         this.selectedServerIndex = serverIndex;
 
+        const typeEl = document.getElementById('serverTypeLabel');
         const amtEl = document.getElementById('serverDataAmount');
         const maxEl = document.getElementById('serverDataMax');
+        const targetBtn = document.getElementById('setTargetBtn');
+
+        if (typeEl) {
+            typeEl.textContent = this.resources.type[serverIndex] === 0 ? 'Generator' : 'Relay';
+            typeEl.style.color = this.resources.type[serverIndex] === 0 ? '#ff00ff' : '#00F3FF'; // Purple vs Cyan
+        }
 
         amtEl.textContent = Math.floor(this.resources.amount[serverIndex]);
         maxEl.textContent = Math.floor(this.resources.maxAmount[serverIndex]);
+
+        // Hide targeting button if outside influence radius
+        if (targetBtn) {
+            const hx = this.hubs.posX[0]; // Assuming one main hub for now
+            const hy = this.hubs.posY[0];
+            const sx = this.resources.posX[serverIndex];
+            const sy = this.resources.posY[serverIndex];
+            const dx = sx - hx;
+            const dy = sy - hy;
+            const distSq = dx * dx + dy * dy;
+
+            const currentInfluence = 500 + this.upgrades.perks.hubInfluenceRadiusBoost;
+
+            if (distSq <= currentInfluence * currentInfluence) {
+                targetBtn.style.display = 'block';
+                if (this.activeTargetServer === serverIndex) {
+                    targetBtn.textContent = 'ACTIVE TARGET';
+                    targetBtn.style.opacity = '0.5';
+                    targetBtn.style.cursor = 'default';
+                } else {
+                    targetBtn.textContent = 'SET AS TARGET';
+                    targetBtn.style.opacity = '1';
+                    targetBtn.style.cursor = 'pointer';
+                }
+            } else {
+                targetBtn.style.display = 'none';
+            }
+        }
     }
 
     handleCanvasClick(sx, sy) {
@@ -294,30 +347,50 @@ class CanvasGame {
         }
 
         // Spawn Packets periodically
-        // Get all server indices
-        const serverIndices = [];
+        const generatorIndices = [];
+        const relayIndices = [];
+
         for (let i = 0; i < this.resources.count; i++) {
-            if (this.resources.type[i] === 0 && this.resources.amount[i] > 50) {
-                serverIndices.push(i);
+            if (this.resources.amount[i] > 50) {
+                if (this.resources.type[i] === 0) generatorIndices.push(i);
+                if (this.resources.type[i] === 1) relayIndices.push(i);
             }
         }
 
-        if (serverIndices.length >= 2 && Math.random() < 0.1) {
-            // Pick two distinct servers
-            const s1 = serverIndices[Math.floor(Math.random() * serverIndices.length)];
-            let s2 = serverIndices[Math.floor(Math.random() * serverIndices.length)];
-            while (s1 === s2) {
-                s2 = serverIndices[Math.floor(Math.random() * serverIndices.length)];
-            }
+        // Generators emit rarely (2% chance per frame)
+        if (generatorIndices.length > 0 && Math.random() < 0.1) {
+            const s1 = generatorIndices[Math.floor(Math.random() * generatorIndices.length)];
+            // Pick a random target (any server)
+            const allServers = generatorIndices.concat(relayIndices);
+            let s2 = allServers[Math.floor(Math.random() * allServers.length)];
 
-            // Spawn packet
-            const chunk = 20 + Math.random() * 30;
-            this.resources.amount[s1] -= chunk;
-            this.resources.spawnPacket(
-                this.resources.posX[s1], this.resources.posY[s1],
-                this.resources.posX[s2], this.resources.posY[s2],
-                chunk
-            );
+            if (s1 !== s2) {
+                const chunk = 20 + Math.random() * 30;
+                this.resources.amount[s1] -= chunk;
+                this.resources.spawnPacket(
+                    this.resources.posX[s1], this.resources.posY[s1],
+                    this.resources.posX[s2], this.resources.posY[s2],
+                    chunk
+                );
+            }
+        }
+
+        // Relays emit frequently (15% chance per frame)
+        if (relayIndices.length > 0 && Math.random() < 0.25) {
+            const s1 = relayIndices[Math.floor(Math.random() * relayIndices.length)];
+            // Pick a random target (any server)
+            const allServers = generatorIndices.concat(relayIndices);
+            let s2 = allServers[Math.floor(Math.random() * allServers.length)];
+
+            if (s1 !== s2) {
+                const chunk = 20 + Math.random() * 30;
+                this.resources.amount[s1] -= chunk;
+                this.resources.spawnPacket(
+                    this.resources.posX[s1], this.resources.posY[s1],
+                    this.resources.posX[s2], this.resources.posY[s2],
+                    chunk
+                );
+            }
         }
 
         this.nodlets.update(deltaTime, this.world);
@@ -367,85 +440,114 @@ class CanvasGame {
             const hx = this.hubs.posX[hubIdx];
             const hy = this.hubs.posY[hubIdx];
 
-            if (state === 0) { // Seeking Data
+            if (state === 0 || state === 2) { // Seeking or Orbiting Target Server
                 if (carriedData >= maxCarry) {
+                    this.nodlets.state[i] = 1; // Full, go home
+                    continue;
+                }
+
+                // 1. Always check for Packet Collisions first
+                let packetCaught = false;
+                this.resources.forEachNeighbor(cx, cy, 30, (resIdx) => {
+                    if (this.resources.type[resIdx] === 2 && !packetCaught) { // Packet collision
+                        const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
+                        this.nodlets.carriedData[i] += take;
+                        this.resources.despawn(resIdx);
+                        packetCaught = true;
+                    }
+                });
+
+                if (this.nodlets.carriedData[i] >= maxCarry) {
                     this.nodlets.state[i] = 1;
                     continue;
                 }
 
-                // Check collisions with packets or servers
-                let closestDistSq = 500 * 500;
-                let targetResIdx = -1;
+                // 2. Movement Logic
+                let targetId = this.activeTargetServer;
 
-                this.resources.forEachNeighbor(cx, cy, 500, (resIdx) => {
-                    if (this.resources.amount[resIdx] <= 0) return;
-
-                    const rx = this.resources.posX[resIdx];
-                    const ry = this.resources.posY[resIdx];
-                    const dx = rx - cx;
-                    const dy = ry - cy;
-                    const distSq = dx * dx + dy * dy;
-
-                    // If it's a Packet (type 1), check for immediate collision
-                    if (this.resources.type[resIdx] === 1 && distSq < 1000) { // roughly 30px distance
-                        const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
-                        this.nodlets.carriedData[i] += take;
-                        this.resources.despawn(resIdx);
-                        if (this.nodlets.carriedData[i] >= maxCarry) {
-                            this.nodlets.state[i] = 1; // Full!
-                        }
-                        return; // continue search
-                    }
-
-                    // Otherwise if it's a Server (type 0), lock onto closest
-                    if (this.resources.type[resIdx] === 0 && distSq < closestDistSq) {
-                        closestDistSq = distSq;
-                        targetResIdx = resIdx;
-                    }
-                });
-
-                // If still seeking and found a server
-                if (this.nodlets.state[i] === 0 && targetResIdx !== -1) {
-                    const resIdx = targetResIdx;
-                    const rx = this.resources.posX[resIdx];
-                    const ry = this.resources.posY[resIdx];
-                    const dx = rx - cx;
-                    const dy = ry - cy;
-
-                    if (closestDistSq < 1600) { // Harvest range from server (40px)
-                        const bite = 20 * deltaTime;
-                        const amountToTake = Math.min(this.resources.amount[resIdx], bite, maxCarry - carriedData);
-
-                        this.nodlets.carriedData[i] += amountToTake;
-                        this.resources.amount[resIdx] -= amountToTake;
-
-                        this.nodlets.velX[i] *= 0.8;
-                        this.nodlets.velY[i] *= 0.8;
-                    } else { // Move towards server
-                        const dist = Math.sqrt(closestDistSq);
-                        const force = (1.0 - dist / 500) * 45 * deltaTime;
-
-                        // BUT only if moving towards it doesn't leave the influence zone!
-                        const dHubX = (rx) - hx;
-                        const dHubY = (ry) - hy;
-                        if (dHubX * dHubX + dHubY * dHubY <= currentInfluence * currentInfluence) {
-                            this.nodlets.velX[i] += (dx / dist) * force * this.upgrades.perks.nodletSpeedMult;
-                            this.nodlets.velY[i] += (dy / dist) * force * this.upgrades.perks.nodletSpeedMult;
-                        } else {
-                            // Target server is outside influence zone, ignore it and wander
-                            targetResIdx = -1;
-                        }
+                // Validate Target Server (exists and is within influence)
+                if (targetId !== -1) {
+                    const tx = this.resources.posX[targetId];
+                    const ty = this.resources.posY[targetId];
+                    const dxToHub = tx - hx;
+                    const dyToHub = ty - hy;
+                    if (dxToHub * dxToHub + dyToHub * dyToHub > currentInfluence * currentInfluence) {
+                        targetId = -1; // Target is outside influence zone, ignore it
                     }
                 }
 
-                if (targetResIdx === -1) { // Wander
+                // If no valid global target, pick a random server in range
+                if (targetId === -1) {
+                    // Try to pick one if we don't have one cached in intent/wander array (reusing wander timer for target caching)
+                    const potentialTargets = [];
+                    for (let j = 0; j < this.resources.count; j++) {
+                        if (this.resources.type[j] === 0 || this.resources.type[j] === 1) {
+                            const dx = this.resources.posX[j] - hx;
+                            const dy = this.resources.posY[j] - hy;
+                            if (dx * dx + dy * dy <= currentInfluence * currentInfluence) {
+                                potentialTargets.push(j);
+                            }
+                        }
+                    }
+                    if (potentialTargets.length > 0) {
+                        // Pick random valid server
+                        targetId = potentialTargets[Math.floor(Math.random() * potentialTargets.length)];
+                    }
+                }
+
+                if (targetId !== -1) {
+                    const tx = this.resources.posX[targetId];
+                    const ty = this.resources.posY[targetId];
+                    const dx = tx - cx;
+                    const dy = ty - cy;
+                    const distSq = dx * dx + dy * dy;
+
+                    const orbitRadius = this.nodlets.orbitRadius[i];
+
+                    if (distSq > orbitRadius * orbitRadius * 1.5) {
+                        // Fly towards target
+                        this.nodlets.state[i] = 0; // Seeking
+                        const dist = Math.sqrt(distSq);
+                        const force = 60 * deltaTime;
+                        this.nodlets.velX[i] += (dx / dist) * force * this.upgrades.perks.nodletSpeedMult;
+                        this.nodlets.velY[i] += (dy / dist) * force * this.upgrades.perks.nodletSpeedMult;
+                    } else {
+                        // Orbiting
+                        this.nodlets.state[i] = 2; // Orbiting
+
+                        // Perpendicular vector for orbit, factoring in user desired direction
+                        const dir = this.nodlets.orbitDirection[i];
+                        const pX = -dy * dir;
+                        const pY = dx * dir;
+                        const dist = Math.sqrt(distSq);
+
+                        // Pull towards the exact orbit radius
+                        const pullFactor = (dist - orbitRadius) * 0.1;
+                        const pullX = (dx / dist) * pullFactor;
+                        const pullY = (dy / dist) * pullFactor;
+
+                        // Orbit speed (significantly faster as requested)
+                        const orbitSpeed = 150 * deltaTime * this.upgrades.perks.nodletSpeedMult;
+                        const tangentX = (pX / dist) * orbitSpeed;
+                        const tangentY = (pY / dist) * orbitSpeed;
+
+                        this.nodlets.velX[i] += tangentX + pullX;
+                        this.nodlets.velY[i] += tangentY + pullY;
+
+                        // Apply friction to keep orbit stable
+                        this.nodlets.velX[i] *= 0.95;
+                        this.nodlets.velY[i] *= 0.95;
+                    }
+                } else {
+                    // WANDER EMULATOR (if absolutely no servers exist)
+                    this.nodlets.state[i] = 0;
                     this.nodlets.wanderTimer[i] -= deltaTime;
                     if (this.nodlets.wanderTimer[i] <= 0) {
                         this.nodlets.wanderAngle[i] += (Math.random() - 0.5) * Math.PI;
                         this.nodlets.wanderTimer[i] = 1 + Math.random() * 2;
                     }
 
-                    // Constrain wander within Influence zone
+                    // Constrain wander within Influence zone BEFORE moving
                     let wanderVx = Math.cos(this.nodlets.wanderAngle[i]) * MAX_WANDER_SPEED;
                     let wanderVy = Math.sin(this.nodlets.wanderAngle[i]) * MAX_WANDER_SPEED;
 
