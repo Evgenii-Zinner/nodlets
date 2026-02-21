@@ -1,0 +1,3 @@
+## 2026-02-21 -
+**Learning:** When using PixiJS and managing rotation and scales within hierarchical `PIXI.Container`s, directly targeting the base `width`/`height` properties on the child Sprite (`body.width`/`body.height`) often works much better than manipulating `scale.set` if the intent is to avoid confusing inheritance issues, especially when separating UI elements (like health bars) from the scaled visual elements. Since the `rotation` is applied directly to the inner child Sprite (`body`), the siblings (the health bars) magically stay upright.
+**Action:** Implemented Squash & Stretch using `body.width`/`body.height` instead of global scaling to successfully decouple the entity's health bars from the deformation.

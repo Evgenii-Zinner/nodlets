@@ -125,15 +125,23 @@ export class Renderer {
     }
 
     updateCreatures(creatures, camera) {
+        // Tweakable Variables for Juice
+        const SQUASH_FACTOR = 0.005;
+        const MAX_SQUASH = 1.6; // Max stretch
+
         // Grow pool if needed
         while (this.creatureSprites.length < creatures.count) {
-            const sprite = new PIXI.Sprite(this.creatureTexture);
-            sprite.anchor.set(0.5);
+            const root = new PIXI.Container();
+
+            const body = new PIXI.Sprite(this.creatureTexture);
+            body.name = 'body';
+            body.anchor.set(0.5);
+            root.addChild(body);
 
             // Container for bars
             const bars = new PIXI.Container();
             bars.name = 'bars';
-            sprite.addChild(bars);
+            root.addChild(bars);
 
             const bg = new PIXI.Graphics();
             bg.name = 'bg';
@@ -142,25 +150,48 @@ export class Renderer {
             bars.addChild(bg);
             bars.addChild(fill);
 
-            this.creatureContainer.addChild(sprite);
-            this.creatureSprites.push(sprite);
+            this.creatureContainer.addChild(root);
+            this.creatureSprites.push(root);
         }
 
         // Sync sprites
         for (let i = 0; i < this.creatureSprites.length; i++) {
-            const sprite = this.creatureSprites[i];
+            const root = this.creatureSprites[i];
+
             if (i < creatures.count) {
-                sprite.visible = true;
-                sprite.position.set(creatures.posX[i], creatures.posY[i]);
-                sprite.width = creatures.size[i];
-                sprite.height = creatures.size[i];
+                root.visible = true;
+                root.position.set(creatures.posX[i], creatures.posY[i]);
+
+                const body = root.getChildByName('body');
+                const bars = root.getChildByName('bars');
+
+                const vx = creatures.velX[i];
+                const vy = creatures.velY[i];
+                const speed = Math.sqrt(vx * vx + vy * vy);
+
+                // Squash and Stretch based on Speed
+                // Stretch in direction of movement (X locally when rotated), Squash perpendicular (Y locally)
+                const stretch = Math.min(MAX_SQUASH, 1.0 + (speed * SQUASH_FACTOR));
+                const squash = 1.0 / stretch; // Maintain volume
+
+                // Base size
+                const baseSize = creatures.size[i];
+                // Apply stretch to width/height to bypass global scale inheritance confusion
+                body.width = baseSize * stretch;
+                body.height = baseSize * squash;
+
+                // Rotate body to face velocity vector
+                if (speed > 0.1) {
+                    body.rotation = Math.atan2(vy, vx);
+                }
 
                 const colorInt = creatures.color[i];
-                sprite.tint = (colorInt >> 8) & 0xFFFFFF;
+                body.tint = (colorInt >> 8) & 0xFFFFFF;
 
-                const bars = sprite.getChildByName('bars');
                 if (camera.zoom > 0.5) {
                     bars.visible = true;
+                    // Reset bars rotation opposite to root if root rotated, or just don't rotate root.
+                    // We applied rotation to `body`, so `bars` stay unrotated implicitly.
                     const energyPercent = creatures.energy[i] / creatures.maxEnergy[i];
                     const barWidth = creatures.size[i];
                     const barHeight = 2;
@@ -178,7 +209,7 @@ export class Renderer {
                     bars.visible = false;
                 }
             } else {
-                sprite.visible = false;
+                root.visible = false;
             }
         }
     }
