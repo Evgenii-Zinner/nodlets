@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Canvas Game - EZ Space</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <script src="https://pixijs.download/v8.6.6/pixi.min.js"></script>
 </head>
 <body>
@@ -17,32 +17,41 @@
         </div>
         
         <div class="hud-top-right">
-            <button id="upgradeBtn" class="upgrade-btn hidden">★ UPGRADE AVAILABLE ★</button>
+            <button id="upgradeBtn" class="upgrade-btn">★ UPGRADES (<span id="pointsHUD">0</span>) ★</button>
             <div class="status-panel">
-                <div class="status-header">Selected Nodlet</div>
-                <div id="creature-empty" style="font-style: italic; color: #888; padding: 10px; text-align: center;">Select a nodlet to inspect</div>
+                <div class="status-header">Selected Entity</div>
+                <div id="entity-empty" style="font-style: italic; color: #888; padding: 10px; text-align: center;">Select a nodlet or server to inspect</div>
+                
+                <!-- Nodlet Details -->
                 <div id="creature-details" class="hidden" style="display: flex; flex-direction: column; gap: 8px;">
-                <div class="status-item">
-                    <span class="status-label">State:</span>
-                    <span class="status-state" id="creatureState">-</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Age:</span>
-                    <span class="status-value" id="creatureAge">-</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Intent:</span>
-                    <span class="status-value" id="creatureIntent">-</span>
-                </div>
-                <div class="status-item" id="energyItem">
-                    <span class="status-label">Energy:</span>
-                    <span class="status-value"><span id="creatureStateEnergy">-</span> / <span id="creatureMaxEnergy">-</span></span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Data Carried:</span>
-                    <span class="status-value"><span id="creatureIntelligence">-</span></span>
+                    <div class="status-item">
+                        <span class="status-label">Type:</span>
+                        <span class="status-value">Nodlet</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">State:</span>
+                        <span class="status-state" id="creatureState">-</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Intent:</span>
+                        <span class="status-value" id="creatureIntent">-</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Data Carried:</span>
+                        <span class="status-value"><span id="creatureIntelligence">-</span></span>
+                    </div>
                 </div>
 
+                <!-- Server Details -->
+                <div id="server-details" class="hidden" style="display: flex; flex-direction: column; gap: 8px;">
+                    <div class="status-item">
+                        <span class="status-label">Type:</span>
+                        <span class="status-value" style="color: #00F3FF;">Data Server</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Data Available:</span>
+                        <span class="status-value"><span id="serverDataAmount">-</span> / <span id="serverDataMax">-</span></span>
+                    </div>
                 </div></div>
             <div class="population-panel">
                 Nodlets: <span id="creatureCount">0</span>
@@ -55,17 +64,40 @@
         <canvas id="gameCanvas"></canvas>
     </div>
 
-    <!-- Upgrade Modal -->
+    <!-- Radial Upgrade Modal -->
     <div id="upgradeModal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <h2>SYSTEM UPGRADE</h2>
-            <p>Milestone Reached! Select an enhancement:</p>
-            <div id="upgradeChoices" class="upgrade-choices">
-                <!-- Choices injected here -->
+        <div class="modal-content radial-ui">
+            <button id="closeModalBtn" class="close-btn">X</button>
+            <div class="modal-header">
+                <h2>SYSTEM MATRIX</h2>
+                <div class="points-display">Available Points: <span id="availablePoints" class="highlight">0</span></div>
+            </div>
+            
+            <div class="radial-container">
+                <!-- Tier 2 (Outer Ring) -->
+                <div class="tier ring-2">
+                    <div class="node-wrapper pos-top"><button id="btn_t2_cap" class="node">?</button></div>
+                    <div class="node-wrapper pos-right"><button id="btn_t2_spd" class="node">?</button></div>
+                    <div class="node-wrapper pos-bottom"><button id="btn_t2_inf" class="node">?</button></div>
+                    <div class="node-wrapper pos-left"><button id="btn_t2_amt" class="node">?</button></div>
+                </div>
+                
+                <!-- Tier 1 (Inner Ring) -->
+                <div class="tier ring-1">
+                    <div class="node-wrapper pos-top"><button id="btn_t1_cap" class="node">?</button></div>
+                    <div class="node-wrapper pos-right"><button id="btn_t1_spd" class="node">?</button></div>
+                    <div class="node-wrapper pos-bottom"><button id="btn_t1_inf" class="node">?</button></div>
+                    <div class="node-wrapper pos-left"><button id="btn_t1_amt" class="node">?</button></div>
+                </div>
+                
+                <!-- Hub Core (Center) -->
+                <div class="core-hub">
+                    <div class="core-inner">HUB</div>
+                </div>
             </div>
         </div>
     </div>
 
-    <script type="module" src="game.js"></script>
+    <script type="module" src="game.js?v=2"></script>
 </body>
 </html>

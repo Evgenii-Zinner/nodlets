@@ -30,6 +30,10 @@ export class Renderer {
         this.gridGraphics = new PIXI.Graphics();
         this.worldContainer.addChild(this.gridGraphics);
 
+        // Graphics for influence zones
+        this.influenceGraphics = new PIXI.Graphics();
+        this.worldContainer.addChild(this.influenceGraphics);
+
         this.resourceContainer = new PIXI.Container();
         this.worldContainer.addChild(this.resourceContainer);
 
@@ -58,15 +62,15 @@ export class Renderer {
             .fill({ color: 0x00F3FF, alpha: 0.8 });
         this.dataTexture = this.app.renderer.generateTexture(dataGfx);
 
-        // Energy texture (keeping just in case, though unused)
-        const energyGfx = new PIXI.Graphics()
-            .moveTo(0, -15)
-            .lineTo(15, 0)
-            .lineTo(0, 15)
-            .lineTo(-15, 0)
+        // Server texture (Large Diamond)
+        const serverGfx = new PIXI.Graphics()
+            .moveTo(0, -25)
+            .lineTo(25, 0)
+            .lineTo(0, 25)
+            .lineTo(-25, 0)
             .closePath()
             .fill({ color: 0x00FF41, alpha: 0.8 });
-        this.energyTexture = this.app.renderer.generateTexture(energyGfx);
+        this.serverTexture = this.app.renderer.generateTexture(serverGfx);
 
         // Hub Hexagon texture
         const hubGfx = new PIXI.Graphics();
@@ -82,11 +86,13 @@ export class Renderer {
         this.hubTexture = this.app.renderer.generateTexture(hubGfx);
     }
 
-    update(camera, hubs, nodlets, resources) {
+    update(camera, hubs, nodlets, resources, options = {}) {
         this.worldContainer.scale.set(camera.zoom);
         this.worldContainer.position.set(-camera.x * camera.zoom, -camera.y * camera.zoom);
 
         this.drawGrid(camera);
+        this.drawInfluenceZones(hubs, options.influence || 500);
+
         this.updateResources(resources);
         this.updateHubs(hubs);
         this.updateNodlets(nodlets, camera);
@@ -119,6 +125,15 @@ export class Renderer {
             .stroke({ color: 0x00F3FF, width: 2, alpha: 0.5 });
     }
 
+    drawInfluenceZones(hubs, influenceRadius) {
+        this.influenceGraphics.clear();
+        for (let i = 0; i < hubs.count; i++) {
+            this.influenceGraphics.circle(hubs.posX[i], hubs.posY[i], influenceRadius)
+                .stroke({ color: 0x00F3FF, width: 1, alpha: 0.15 })
+                .fill({ color: 0x00F3FF, alpha: 0.02 });
+        }
+    }
+
     updateResources(resources) {
         // Grow pool if needed
         while (this.resourceSprites.length < resources.count) {
@@ -133,9 +148,19 @@ export class Renderer {
             const sprite = this.resourceSprites[i];
             if (i < resources.count) {
                 sprite.visible = true;
-                sprite.texture = resources.type[i] === 0 ? this.energyTexture : this.dataTexture;
+                // Type 0 is Server, Type 1 is Packet
+                sprite.texture = resources.type[i] === 0 ? this.serverTexture : this.dataTexture;
                 sprite.position.set(resources.posX[i], resources.posY[i]);
-                sprite.alpha = 0.3 + (Math.min(1.0, resources.amount[i] / 1000) * 0.7);
+
+                if (resources.type[i] === 0) {
+                    // Scale server based on current amount vs max amount
+                    const scale = 0.5 + (resources.amount[i] / resources.maxAmount[i]) * 0.5;
+                    sprite.scale.set(scale);
+                    sprite.alpha = 0.5 + (resources.amount[i] / resources.maxAmount[i]) * 0.5;
+                } else {
+                    sprite.scale.set(1);
+                    sprite.alpha = 1.0;
+                }
             } else {
                 sprite.visible = false;
             }
@@ -150,19 +175,6 @@ export class Renderer {
             body.name = 'body';
             body.anchor.set(0.5);
             root.addChild(body);
-
-            const text = new PIXI.Text({
-                text: 'Lvl 1',
-                style: {
-                    fontFamily: 'Orbitron, monospace',
-                    fontSize: 16,
-                    fill: 0xFFFFFF,
-                    align: 'center',
-                }
-            });
-            text.name = 'text';
-            text.anchor.set(0.5);
-            root.addChild(text);
 
             this.hubContainer.addChild(root);
             this.hubSprites.push(root);
@@ -181,9 +193,6 @@ export class Renderer {
 
                 const colorInt = hubs.color[i];
                 body.tint = (colorInt >> 8) & 0xFFFFFF;
-
-                const text = root.getChildByName('text');
-                text.text = `Lvl ${hubs.level[i]}`;
             } else {
                 root.visible = false;
             }

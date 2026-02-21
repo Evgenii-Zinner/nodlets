@@ -1,5 +1,5 @@
 /**
- * Canvas Game - Life Simulation with Hubs and Nodlets
+ * Canvas Game - Life Simulation with Hubs, Nodlets, and Servers
  * EZ Space - Tactical Cyberpunk Edition
  */
 
@@ -39,7 +39,6 @@ class CanvasGame {
         this.fixedTimeStep = 1 / 60;
 
         this.selectedNodletIndex = -1;
-        this.totalDataConsumed = 0;
 
         this.upgrades = new UpgradeSystem();
 
@@ -66,7 +65,7 @@ class CanvasGame {
         this.bindUpgradeEvents();
 
         this.spawnInitialHubs();
-        this.spawnInitialResources();
+        this.spawnInitialServers();
         this.gameLoop();
     }
 
@@ -76,40 +75,87 @@ class CanvasGame {
         this.hubs.spawn(centerX, centerY);
     }
 
-    spawnInitialResources() {
-        // Data Filling
-        for (let i = 0; i < 500; i++) {
-            const x = Math.random() * this.world.width;
-            const y = Math.random() * this.world.height;
-            this.resources.spawnData(x, y);
+    spawnInitialServers() {
+        // Spawn 30 servers randomly around the map
+        for (let i = 0; i < 30; i++) {
+            const x = 500 + Math.random() * (this.world.width - 1000);
+            const y = 500 + Math.random() * (this.world.height - 1000);
+            this.resources.spawnServer(x, y, 2000 + Math.random() * 2000);
         }
     }
 
+    // Modal UI handled via HTML/CSS layout (to be implemented next)
     bindUpgradeEvents() {
         const btn = document.getElementById('upgradeBtn');
         const modal = document.getElementById('upgradeModal');
-        const choicesContainer = document.getElementById('upgradeChoices');
+        const closeBtn = document.getElementById('closeModalBtn'); // Assuming we add this
 
         if (btn) {
             btn.addEventListener('click', () => {
-                const choices = this.upgrades.getChoices();
-                choicesContainer.innerHTML = '';
-
-                choices.forEach((choice) => {
-                    const card = document.createElement('div');
-                    card.className = 'upgrade-card';
-                    card.innerHTML = `<h3>${choice.name}</h3><p>${choice.description}</p>`;
-                    card.onclick = () => {
-                        this.upgrades.applyUpgrade(choice);
-                        modal.classList.add('hidden');
-                        btn.classList.add('hidden');
-                    };
-                    choicesContainer.appendChild(card);
-                });
-
+                this.renderUpgradeTree();
                 modal.classList.remove('hidden');
             });
         }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+        }
+    }
+
+    renderUpgradeTree() {
+        // This will bind to the new HTML layout
+        const ptsEl = document.getElementById('availablePoints');
+        if (ptsEl) ptsEl.textContent = this.upgrades.availablePoints;
+
+        // Tier 1 UI
+        const t1Keys = ['capacity', 'speed', 'influence', 'amount'];
+        t1Keys.forEach(k => {
+            const btn = document.getElementById(`btn_${this.upgrades.tree.tier1.nodes[k].id}`);
+            if (btn) {
+                const node = this.upgrades.tree.tier1.nodes[k];
+                if (node.unlocked) {
+                    btn.className = "node unlocked";
+                    btn.onclick = null;
+                } else if (!this.upgrades.tree.tier1.unlocked) {
+                    btn.className = "node locked";
+                    btn.onclick = null;
+                } else {
+                    btn.className = "node available";
+                    btn.onclick = () => {
+                        if (this.upgrades.buyUpgrade('tier1', k)) {
+                            this.renderUpgradeTree();
+                        }
+                    };
+                }
+                btn.title = `${node.name}\nCost: ${node.cost} pt(s)\n${node.desc}`;
+            }
+        });
+
+        // Tier 2 UI
+        const t2Keys = ['capacity', 'speed', 'influence', 'amount'];
+        t2Keys.forEach(k => {
+            const btn = document.getElementById(`btn_${this.upgrades.tree.tier2.nodes[k].id}`);
+            if (btn) {
+                const node = this.upgrades.tree.tier2.nodes[k];
+                if (node.unlocked) {
+                    btn.className = "node unlocked";
+                    btn.onclick = null;
+                } else if (!this.upgrades.tree.tier2.unlocked) {
+                    btn.className = "node locked";
+                    btn.onclick = null;
+                } else {
+                    btn.className = "node available";
+                    btn.onclick = () => {
+                        if (this.upgrades.buyUpgrade('tier2', k)) {
+                            this.renderUpgradeTree();
+                        }
+                    };
+                }
+                btn.title = `${node.name}\nCost: ${node.cost} pt(s)\n${node.desc}`;
+            }
+        });
     }
 
     updateZoomDisplay() {
@@ -119,42 +165,45 @@ class CanvasGame {
         }
     }
 
-    clearNodletSelection() {
+    clearSelection() {
         this.selectedNodletIndex = -1;
-        const empty = document.getElementById('creature-empty');
-        const details = document.getElementById('creature-details');
+        this.selectedServerIndex = -1;
+        const empty = document.getElementById('entity-empty');
+        const nDetails = document.getElementById('creature-details');
+        const sDetails = document.getElementById('server-details');
         if (empty) empty.classList.remove('hidden');
-        if (details) details.classList.add('hidden');
+        if (nDetails) nDetails.classList.add('hidden');
+        if (sDetails) sDetails.classList.add('hidden');
     }
 
     updateNodletStatus(nodletIndex) {
-        const empty = document.getElementById('creature-empty');
-        const details = document.getElementById('creature-details');
+        const empty = document.getElementById('entity-empty');
+        const nDetails = document.getElementById('creature-details');
+        const sDetails = document.getElementById('server-details');
         if (empty) empty.classList.add('hidden');
-        if (details) details.classList.remove('hidden');
+        if (sDetails) sDetails.classList.add('hidden');
+        if (nDetails) nDetails.classList.remove('hidden');
 
         if (nodletIndex < 0 || nodletIndex >= this.nodlets.count) return;
 
         this.selectedNodletIndex = nodletIndex;
 
         const stateEl = document.getElementById('creatureState');
-        const ageEl = document.getElementById('creatureAge');
-        const energyContainer = document.getElementById('energyItem'); // Assuming we hide this later in HTML
-        if (energyContainer) energyContainer.style.display = 'none';
-
         const dataCountEl = document.getElementById('creatureIntelligence');
         const intentEl = document.getElementById('creatureIntent');
 
         const state = this.nodlets.state[nodletIndex];
         const stateLabels = ['Seeking Data', 'Returning to Hub'];
 
-        stateEl.textContent = state === 1 ? 'Returning' : 'Seeking';
-        stateEl.className = `status-state ${state === 1 ? 'charging' : 'wandering'}`;
+        if (stateEl) {
+            stateEl.textContent = state === 1 ? 'Returning' : 'Seeking';
+            stateEl.className = `status-state ${state === 1 ? 'charging' : 'wandering'}`;
+        }
 
-        ageEl.textContent = Math.round(this.nodlets.age[nodletIndex]) + 's';
-        intentEl.textContent = stateLabels[state] || 'None';
+        if (intentEl) {
+            intentEl.textContent = stateLabels[state] || 'None';
+        }
 
-        // Repurposing Intelligence UI for Data Carrying Capacity
         dataCountEl.textContent = Math.round(this.nodlets.carriedData[nodletIndex]) + ' / ' + Math.round(this.nodlets.maxDataCapacity[nodletIndex]);
     }
 
@@ -165,78 +214,149 @@ class CanvasGame {
 
     updateGlobalStats() {
         const dataEl = document.getElementById('totalDataConsumed');
-        if (dataEl) dataEl.textContent = Math.floor(this.totalDataConsumed);
+        if (dataEl) dataEl.textContent = Math.floor(this.upgrades.totalDataEarned);
+
+        const pointsEl = document.getElementById('pointsHUD'); // Add this to HTML
+        if (pointsEl) pointsEl.textContent = this.upgrades.availablePoints;
+    }
+
+    updateServerStatus(serverIndex) {
+        const empty = document.getElementById('entity-empty');
+        const nDetails = document.getElementById('creature-details');
+        const sDetails = document.getElementById('server-details');
+        if (empty) empty.classList.add('hidden');
+        if (nDetails) nDetails.classList.add('hidden');
+        if (sDetails) sDetails.classList.remove('hidden');
+
+        if (serverIndex < 0 || serverIndex >= this.resources.count) return;
+        this.selectedServerIndex = serverIndex;
+
+        const amtEl = document.getElementById('serverDataAmount');
+        const maxEl = document.getElementById('serverDataMax');
+
+        amtEl.textContent = Math.floor(this.resources.amount[serverIndex]);
+        maxEl.textContent = Math.floor(this.resources.maxAmount[serverIndex]);
     }
 
     handleCanvasClick(sx, sy) {
         if (!this.camera) return;
         const worldPos = this.camera.screenToWorld(sx, sy);
-        let nearestIndex = -1;
-        let minDist = 30 / this.camera.zoom;
 
+        let nearestNodlet = -1;
+        let minDistNodlet = 30 / this.camera.zoom;
+
+        let nearestServer = -1;
+        let minDistServer = 60 / this.camera.zoom; // Servers are larger
+
+        // Check Servers first
+        this.resources.forEachNeighbor(worldPos.x, worldPos.y, 100, (idx) => {
+            if (this.resources.type[idx] !== 0) return; // Only click servers
+            const dx = this.resources.posX[idx] - worldPos.x;
+            const dy = this.resources.posY[idx] - worldPos.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < minDistServer) {
+                minDistServer = dist;
+                nearestServer = idx;
+            }
+        });
+
+        // Check Nodlets
         this.nodlets.forEachNeighbor(worldPos.x, worldPos.y, 50, (idx) => {
             const dx = this.nodlets.posX[idx] - worldPos.x;
             const dy = this.nodlets.posY[idx] - worldPos.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist < minDist) {
-                minDist = dist;
-                nearestIndex = idx;
+            if (dist < minDistNodlet) {
+                minDistNodlet = dist;
+                nearestNodlet = idx;
             }
         });
 
-        if (nearestIndex !== -1) {
-            this.updateNodletStatus(nearestIndex);
+        if (nearestServer !== -1) {
+            this.clearSelection();
+            this.updateServerStatus(nearestServer);
+        } else if (nearestNodlet !== -1) {
+            this.clearSelection();
+            this.updateNodletStatus(nearestNodlet);
         } else {
-            this.clearNodletSelection();
+            this.clearSelection();
         }
     }
 
     update(deltaTime) {
-        if (this.upgrades.checkMilestone(this.totalDataConsumed)) {
-            const btn = document.getElementById('upgradeBtn');
-            if (btn) btn.classList.remove('hidden');
+        // Upgrade button logic
+        const btn = document.getElementById('upgradeBtn');
+        if (btn) {
+            if (this.upgrades.availablePoints > 0) {
+                btn.classList.add('can-upgrade'); // visual cue to be styled
+            } else {
+                btn.classList.remove('can-upgrade');
+            }
         }
 
-        if (Math.random() < this.upgrades.perks.dataDropChance) {
-            this.resources.spawnData(
-                Math.random() * this.world.width,
-                Math.random() * this.world.height
-            );
+        // Spawn Packets periodically
+        // Get all server indices
+        const serverIndices = [];
+        for (let i = 0; i < this.resources.count; i++) {
+            if (this.resources.type[i] === 0 && this.resources.amount[i] > 50) {
+                serverIndices.push(i);
+            }
         }
 
-        // Just maintain 500 data points on screen loosely
-        if (this.resources.count < 500 && Math.random() < 0.1) {
-            this.resources.spawnData(
-                Math.random() * this.world.width,
-                Math.random() * this.world.height
+        if (serverIndices.length >= 2 && Math.random() < 0.1) {
+            // Pick two distinct servers
+            const s1 = serverIndices[Math.floor(Math.random() * serverIndices.length)];
+            let s2 = serverIndices[Math.floor(Math.random() * serverIndices.length)];
+            while (s1 === s2) {
+                s2 = serverIndices[Math.floor(Math.random() * serverIndices.length)];
+            }
+
+            // Spawn packet
+            const chunk = 20 + Math.random() * 30;
+            this.resources.amount[s1] -= chunk;
+            this.resources.spawnPacket(
+                this.resources.posX[s1], this.resources.posY[s1],
+                this.resources.posX[s2], this.resources.posY[s2],
+                chunk
             );
         }
 
         this.nodlets.update(deltaTime, this.world);
-        this.resources.update(deltaTime, this.world, 0); // energy reset rate 0
+        this.resources.update(deltaTime, this.world);
 
-        // Hub Loop
+        // Core Hub and Upgrades sync
+        const baseInfluence = 500;
+        const currentInfluence = baseInfluence + this.upgrades.perks.hubInfluenceRadiusBoost;
+        const maxNodlets = 10 + this.upgrades.perks.nodletAmountBoost;
+        const globalNodletCap = 8 + this.upgrades.perks.nodletCapacityBoost;
+
         for (let i = 0; i < this.hubs.count; i++) {
-            // Count active nodlets
+            this.hubs.baseNodletCapacity[i] = maxNodlets;
             let active = 0;
             for (let j = 0; j < this.nodlets.count; j++) {
                 if (this.nodlets.hubId[j] === i) active++;
             }
             this.hubs.activeNodlets[i] = active;
 
-            // Spawn to reach capacity
             if (active < this.hubs.baseNodletCapacity[i]) {
                 const angle = Math.random() * Math.PI * 2;
                 const r = this.hubs.size[i];
                 const nx = this.hubs.posX[i] + Math.cos(angle) * r;
                 const ny = this.hubs.posY[i] + Math.sin(angle) * r;
-                this.nodlets.spawn(nx, ny, i, this.hubs.color[i]);
+                const nIdx = this.nodlets.spawn(nx, ny, i, this.hubs.color[i]);
+                if (nIdx !== -1) {
+                    this.nodlets.maxDataCapacity[nIdx] = globalNodletCap;
+                }
             }
         }
 
-        // Nodlet Loop
+        // Nodlet AI
+        const MAX_WANDER_SPEED = 50 * this.upgrades.perks.nodletSpeedMult;
+        const MAX_RETURN_SPEED = 100 * this.upgrades.perks.nodletSpeedMult;
+
         for (let i = 0; i < this.nodlets.count; i++) {
+            // Force capacity update immediately from tree
+            this.nodlets.maxDataCapacity[i] = globalNodletCap;
+
             const cx = this.nodlets.posX[i];
             const cy = this.nodlets.posY[i];
             const state = this.nodlets.state[i];
@@ -244,17 +364,20 @@ class CanvasGame {
             const maxCarry = this.nodlets.maxDataCapacity[i];
             const hubIdx = this.nodlets.hubId[i];
 
+            const hx = this.hubs.posX[hubIdx];
+            const hy = this.hubs.posY[hubIdx];
+
             if (state === 0) { // Seeking Data
                 if (carriedData >= maxCarry) {
                     this.nodlets.state[i] = 1;
                     continue;
                 }
 
+                // Check collisions with packets or servers
                 let closestDistSq = 500 * 500;
                 let targetResIdx = -1;
 
                 this.resources.forEachNeighbor(cx, cy, 500, (resIdx) => {
-                    if (this.resources.type[resIdx] !== 1) return; // Need data (type 1)
                     if (this.resources.amount[resIdx] <= 0) return;
 
                     const rx = this.resources.posX[resIdx];
@@ -263,83 +386,140 @@ class CanvasGame {
                     const dy = ry - cy;
                     const distSq = dx * dx + dy * dy;
 
-                    if (distSq < closestDistSq) {
+                    // If it's a Packet (type 1), check for immediate collision
+                    if (this.resources.type[resIdx] === 1 && distSq < 1000) { // roughly 30px distance
+                        const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
+                        this.nodlets.carriedData[i] += take;
+                        this.resources.despawn(resIdx);
+                        if (this.nodlets.carriedData[i] >= maxCarry) {
+                            this.nodlets.state[i] = 1; // Full!
+                        }
+                        return; // continue search
+                    }
+
+                    // Otherwise if it's a Server (type 0), lock onto closest
+                    if (this.resources.type[resIdx] === 0 && distSq < closestDistSq) {
                         closestDistSq = distSq;
                         targetResIdx = resIdx;
                     }
                 });
 
-                if (targetResIdx !== -1) {
+                // If still seeking and found a server
+                if (this.nodlets.state[i] === 0 && targetResIdx !== -1) {
                     const resIdx = targetResIdx;
                     const rx = this.resources.posX[resIdx];
                     const ry = this.resources.posY[resIdx];
                     const dx = rx - cx;
                     const dy = ry - cy;
 
-                    if (closestDistSq < 900) { // Harvest range
-                        const bite = 50 * deltaTime;
+                    if (closestDistSq < 1600) { // Harvest range from server (40px)
+                        const bite = 20 * deltaTime;
                         const amountToTake = Math.min(this.resources.amount[resIdx], bite, maxCarry - carriedData);
 
                         this.nodlets.carriedData[i] += amountToTake;
                         this.resources.amount[resIdx] -= amountToTake;
 
-                        if (this.resources.amount[resIdx] <= 0) {
-                            this.resources.despawn(resIdx);
-                        }
-
                         this.nodlets.velX[i] *= 0.8;
                         this.nodlets.velY[i] *= 0.8;
-                    } else { // Move towards
+                    } else { // Move towards server
                         const dist = Math.sqrt(closestDistSq);
                         const force = (1.0 - dist / 500) * 45 * deltaTime;
-                        this.nodlets.velX[i] += (dx / dist) * force;
-                        this.nodlets.velY[i] += (dy / dist) * force;
+
+                        // BUT only if moving towards it doesn't leave the influence zone!
+                        const dHubX = (rx) - hx;
+                        const dHubY = (ry) - hy;
+                        if (dHubX * dHubX + dHubY * dHubY <= currentInfluence * currentInfluence) {
+                            this.nodlets.velX[i] += (dx / dist) * force * this.upgrades.perks.nodletSpeedMult;
+                            this.nodlets.velY[i] += (dy / dist) * force * this.upgrades.perks.nodletSpeedMult;
+                        } else {
+                            // Target server is outside influence zone, ignore it and wander
+                            targetResIdx = -1;
+                        }
                     }
-                } else { // Wander
+                }
+
+                if (targetResIdx === -1) { // Wander
                     this.nodlets.wanderTimer[i] -= deltaTime;
                     if (this.nodlets.wanderTimer[i] <= 0) {
                         this.nodlets.wanderAngle[i] += (Math.random() - 0.5) * Math.PI;
                         this.nodlets.wanderTimer[i] = 1 + Math.random() * 2;
                     }
-                    const speed = 50;
-                    this.nodlets.velX[i] += (Math.cos(this.nodlets.wanderAngle[i]) * speed - this.nodlets.velX[i]) * 0.1;
-                    this.nodlets.velY[i] += (Math.sin(this.nodlets.wanderAngle[i]) * speed - this.nodlets.velY[i]) * 0.1;
+
+                    // Constrain wander within Influence zone
+                    let wanderVx = Math.cos(this.nodlets.wanderAngle[i]) * MAX_WANDER_SPEED;
+                    let wanderVy = Math.sin(this.nodlets.wanderAngle[i]) * MAX_WANDER_SPEED;
+
+                    const dHubX = (cx + wanderVx * deltaTime) - hx;
+                    const dHubY = (cy + wanderVy * deltaTime) - hy;
+
+                    if (dHubX * dHubX + dHubY * dHubY > currentInfluence * currentInfluence) {
+                        // Point back to hub
+                        this.nodlets.wanderAngle[i] = Math.atan2(hy - cy, hx - cx);
+                        wanderVx = Math.cos(this.nodlets.wanderAngle[i]) * MAX_WANDER_SPEED;
+                        wanderVy = Math.sin(this.nodlets.wanderAngle[i]) * MAX_WANDER_SPEED;
+                    }
+
+                    this.nodlets.velX[i] += (wanderVx - this.nodlets.velX[i]) * 0.1;
+                    this.nodlets.velY[i] += (wanderVy - this.nodlets.velY[i]) * 0.1;
                 }
             } else if (state === 1) { // Returning to Hub
-                const hx = this.hubs.posX[hubIdx];
-                const hy = this.hubs.posY[hubIdx];
                 const dx = hx - cx;
                 const dy = hy - cy;
                 const distSq = dx * dx + dy * dy;
 
                 if (distSq < this.hubs.size[hubIdx] * this.hubs.size[hubIdx]) {
                     // Deposit Data
-                    this.hubs.depositData(hubIdx, carriedData);
-                    this.totalDataConsumed += carriedData;
+                    this.upgrades.addTotalData(carriedData); // Adds to global pool and point pool
+                    this.hubs.depositData(hubIdx, carriedData); // Adds to XP
                     this.nodlets.carriedData[i] = 0;
                     this.nodlets.state[i] = 0;
                     this.nodlets.velX[i] *= 0.1;
                     this.nodlets.velY[i] *= 0.1;
+
+                    // Cap speed on return just in case
                 } else {
                     const dist = Math.sqrt(distSq);
-                    const force = 60 * deltaTime;
-                    this.nodlets.velX[i] += (dx / dist) * force;
-                    this.nodlets.velY[i] += (dy / dist) * force;
 
-                    // Cap speed
-                    const currentSpeed = Math.sqrt(this.nodlets.velX[i] * this.nodlets.velX[i] + this.nodlets.velY[i] * this.nodlets.velY[i]);
-                    if (currentSpeed > 100) {
-                        this.nodlets.velX[i] = (this.nodlets.velX[i] / currentSpeed) * 100;
-                        this.nodlets.velY[i] = (this.nodlets.velY[i] / currentSpeed) * 100;
-                    }
+                    // Desired velocity pointing directly at the hub
+                    const targetVx = (dx / dist) * MAX_RETURN_SPEED;
+                    const targetVy = (dy / dist) * MAX_RETURN_SPEED;
+
+                    // Interpolate current velocity towards target velocity
+                    // This naturally smooths the curve and kills orbital momentum
+                    const turnSpeed = 4.0; // Higher = tighter turns
+                    this.nodlets.velX[i] += (targetVx - this.nodlets.velX[i]) * turnSpeed * deltaTime;
+                    this.nodlets.velY[i] += (targetVy - this.nodlets.velY[i]) * turnSpeed * deltaTime;
                 }
             }
-        }
+
+            // Hard clamp to influence zone (Wall)
+            const dxToHub = this.nodlets.posX[i] - hx;
+            const dyToHub = this.nodlets.posY[i] - hy;
+            const distToHubSq = dxToHub * dxToHub + dyToHub * dyToHub;
+
+            if (distToHubSq > currentInfluence * currentInfluence) {
+                const distToHub = Math.sqrt(distToHubSq);
+                // Clamp position to exactly the radius
+                this.nodlets.posX[i] = hx + (dxToHub / distToHub) * currentInfluence;
+                this.nodlets.posY[i] = hy + (dyToHub / distToHub) * currentInfluence;
+
+                // Bounce velocities to prevent getting stuck pushing against the wall
+                this.nodlets.velX[i] *= -0.8;
+                this.nodlets.velY[i] *= -0.8;
+
+                // If wandering, turn them around immediately
+                if (state === 0) {
+                    this.nodlets.wanderAngle[i] = Math.atan2(hy - this.nodlets.posY[i], hx - this.nodlets.posX[i]);
+                }
+            }
+        } // End of Nodlets AI loop
     }
 
     render() {
         if (this.camera) {
-            this.renderer.update(this.camera, this.hubs, this.nodlets, this.resources);
+            this.renderer.update(this.camera, this.hubs, this.nodlets, this.resources, {
+                influence: 500 + this.upgrades.perks.hubInfluenceRadiusBoost
+            });
         }
     }
 
@@ -361,6 +541,9 @@ class CanvasGame {
             this.updateGlobalStats();
             if (this.selectedNodletIndex >= 0) {
                 this.updateNodletStatus(this.selectedNodletIndex);
+            }
+            if (this.selectedServerIndex >= 0) {
+                this.updateServerStatus(this.selectedServerIndex);
             }
         }
 

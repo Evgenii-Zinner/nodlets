@@ -1,17 +1,26 @@
 /**
- * ResourceSystem - Handles food and charge sources
+ * ResourceSystem - Handles static Servers and traveling Data Packets
  */
 export class ResourceSystem {
-    constructor(maxResources = 500) {
+    constructor(maxResources = 2000) {
         this.maxResources = maxResources;
         this.count = 0;
 
+        // 0: Server, 1: Packet
+        this.type = new Uint8Array(maxResources);
         this.posX = new Float32Array(maxResources);
         this.posY = new Float32Array(maxResources);
         this.amount = new Float32Array(maxResources);
-        this.type = new Uint8Array(maxResources); // 0: Energy, 1: Charge, 2: Data
 
-        // Spatial Grid
+        // For Servers (Regeneration)
+        this.maxAmount = new Float32Array(maxResources);
+
+        // For Packets (Movement)
+        this.targetX = new Float32Array(maxResources);
+        this.targetY = new Float32Array(maxResources);
+        this.speed = new Float32Array(maxResources);
+
+        // Spatial Grid for optimized neighbor lookups
         this.cellSize = 200;
         this.grid = null;
         this.gridCols = 0;
@@ -44,23 +53,35 @@ export class ResourceSystem {
         }
     }
 
-    spawn(x, y, type, amount = 100) {
+    spawnServer(x, y, maxAmount = 1000) {
         if (this.count >= this.maxResources) return -1;
         const idx = this.count++;
+
+        this.type[idx] = 0; // Server
         this.posX[idx] = x;
         this.posY[idx] = y;
-        this.type[idx] = type;
-        this.amount[idx] = amount;
+        this.amount[idx] = maxAmount;
+        this.maxAmount[idx] = maxAmount;
+
         this.dirtyGrid = true;
         return idx;
     }
 
-    spawnEnergy(x, y) {
-        return this.spawn(x, y, 0, 1000);
-    }
+    spawnPacket(startX, startY, endX, endY, amount = 20) {
+        if (this.count >= this.maxResources) return -1;
+        const idx = this.count++;
 
-    spawnData(x, y, amount = 100) {
-        return this.spawn(x, y, 1, amount);
+        this.type[idx] = 1; // Packet
+        this.posX[idx] = startX;
+        this.posY[idx] = startY;
+        this.amount[idx] = amount;
+
+        this.targetX[idx] = endX;
+        this.targetY[idx] = endY;
+        this.speed[idx] = 250 + Math.random() * 100; // Packets are fast
+
+        this.dirtyGrid = true;
+        return idx;
     }
 
     forEachNeighbor(x, y, radius, callback) {
@@ -90,22 +111,45 @@ export class ResourceSystem {
         }
     }
 
-    update(deltaTime, world, energyRate = 10) {
+    update(deltaTime, world) {
         if (!this.grid) this.initGrid(world.width, world.height);
+
+        for (let i = 0; i < this.count; i++) {
+            if (this.type[i] === 0) {
+                // Server Regeneration
+                if (this.amount[i] < this.maxAmount[i]) {
+                    this.amount[i] += 10 * deltaTime; // 10 bytes per second regen
+                    if (this.amount[i] > this.maxAmount[i]) {
+                        this.amount[i] = this.maxAmount[i];
+                    }
+                }
+            } else if (this.type[i] === 1) {
+                // Packet Movement
+                const dx = this.targetX[i] - this.posX[i];
+                const dy = this.targetY[i] - this.posY[i];
+                const distSq = dx * dx + dy * dy;
+
+                // If it reached the destination server, despawn it
+                if (distSq < 100) { // arbitrary small arrival radius
+                    this.despawn(i);
+                    i--;
+                    continue;
+                }
+
+                // Move towards target
+                const dist = Math.sqrt(distSq);
+                const vx = (dx / dist) * this.speed[i];
+                const vy = (dy / dist) * this.speed[i];
+
+                this.posX[i] += vx * deltaTime;
+                this.posY[i] += vy * deltaTime;
+                this.dirtyGrid = true;
+            }
+        }
+
         if (this.dirtyGrid) {
             this.updateGrid();
             this.dirtyGrid = false;
-        }
-
-        // Resources replenishment
-        for (let i = 0; i < this.count; i++) {
-            if (this.type[i] === 0) {
-                // Energy Regeneration
-                if (this.amount[i] < 1000) {
-                    this.amount[i] = Math.min(1000, this.amount[i] + deltaTime * energyRate);
-                }
-            }
-            // Data (Type 1) no longer regenerates
         }
     }
 
@@ -119,10 +163,13 @@ export class ResourceSystem {
             this.posY[idx] = this.posY[lastIdx];
             this.amount[idx] = this.amount[lastIdx];
             this.type[idx] = this.type[lastIdx];
+            this.maxAmount[idx] = this.maxAmount[lastIdx];
+            this.targetX[idx] = this.targetX[lastIdx];
+            this.targetY[idx] = this.targetY[lastIdx];
+            this.speed[idx] = this.speed[lastIdx];
         }
 
         this.count--;
         this.dirtyGrid = true;
     }
 }
-
