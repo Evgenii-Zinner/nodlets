@@ -113,8 +113,14 @@ class CanvasGame {
         if (btn) {
             btn.addEventListener('click', () => {
                 if (this.selectedServerIndex !== -1) {
-                    this.activeTargetServer = this.selectedServerIndex;
-                    console.log("Target Locked:", this.activeTargetServer);
+                    if (this.activeTargetServer === this.selectedServerIndex) {
+                        this.activeTargetServer = -1; // Deselect
+                        console.log("Target Cleared");
+                    } else {
+                        this.activeTargetServer = this.selectedServerIndex; // Select
+                        console.log("Target Locked:", this.activeTargetServer);
+                    }
+                    this.updateServerStatus(this.selectedServerIndex); // Force UI update
                 }
             });
         }
@@ -186,19 +192,22 @@ class CanvasGame {
     clearSelection() {
         this.selectedNodletIndex = -1;
         this.selectedServerIndex = -1;
-        const empty = document.getElementById('entity-empty');
+
+        const mainPanel = document.getElementById('mainStatusPanel');
         const nDetails = document.getElementById('creature-details');
         const sDetails = document.getElementById('server-details');
-        if (empty) empty.classList.remove('hidden');
+
+        if (mainPanel) mainPanel.classList.add('hidden');
         if (nDetails) nDetails.classList.add('hidden');
         if (sDetails) sDetails.classList.add('hidden');
     }
 
     updateNodletStatus(nodletIndex) {
-        const empty = document.getElementById('entity-empty');
+        const mainPanel = document.getElementById('mainStatusPanel');
         const nDetails = document.getElementById('creature-details');
         const sDetails = document.getElementById('server-details');
-        if (empty) empty.classList.add('hidden');
+
+        if (mainPanel) mainPanel.classList.remove('hidden');
         if (sDetails) sDetails.classList.add('hidden');
         if (nDetails) nDetails.classList.remove('hidden');
 
@@ -239,10 +248,11 @@ class CanvasGame {
     }
 
     updateServerStatus(serverIndex) {
-        const empty = document.getElementById('entity-empty');
+        const mainPanel = document.getElementById('mainStatusPanel');
         const nDetails = document.getElementById('creature-details');
         const sDetails = document.getElementById('server-details');
-        if (empty) empty.classList.add('hidden');
+
+        if (mainPanel) mainPanel.classList.remove('hidden');
         if (nDetails) nDetails.classList.add('hidden');
         if (sDetails) sDetails.classList.remove('hidden');
 
@@ -277,13 +287,15 @@ class CanvasGame {
             if (distSq <= currentInfluence * currentInfluence) {
                 targetBtn.style.display = 'block';
                 if (this.activeTargetServer === serverIndex) {
-                    targetBtn.textContent = 'ACTIVE TARGET';
-                    targetBtn.style.opacity = '0.5';
-                    targetBtn.style.cursor = 'default';
+                    targetBtn.textContent = 'REMOVE TARGET';
+                    targetBtn.style.opacity = '1';
+                    targetBtn.style.cursor = 'pointer';
+                    targetBtn.style.background = 'linear-gradient(135deg, #ff0044, #ff6600)';
                 } else {
                     targetBtn.textContent = 'SET AS TARGET';
                     targetBtn.style.opacity = '1';
                     targetBtn.style.cursor = 'pointer';
+                    targetBtn.style.background = ''; // Revert to stylesheet default
                 }
             } else {
                 targetBtn.style.display = 'none';
@@ -303,7 +315,7 @@ class CanvasGame {
 
         // Check Servers first
         this.resources.forEachNeighbor(worldPos.x, worldPos.y, 100, (idx) => {
-            if (this.resources.type[idx] !== 0) return; // Only click servers
+            if (this.resources.type[idx] !== 0 && this.resources.type[idx] !== 1) return; // Only click generators or relays
             const dx = this.resources.posX[idx] - worldPos.x;
             const dy = this.resources.posY[idx] - worldPos.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -325,11 +337,19 @@ class CanvasGame {
         });
 
         if (nearestServer !== -1) {
-            this.clearSelection();
-            this.updateServerStatus(nearestServer);
+            if (this.selectedServerIndex === nearestServer) {
+                this.clearSelection();
+            } else {
+                this.clearSelection();
+                this.updateServerStatus(nearestServer);
+            }
         } else if (nearestNodlet !== -1) {
-            this.clearSelection();
-            this.updateNodletStatus(nearestNodlet);
+            if (this.selectedNodletIndex === nearestNodlet) {
+                this.clearSelection();
+            } else {
+                this.clearSelection();
+                this.updateNodletStatus(nearestNodlet);
+            }
         } else {
             this.clearSelection();
         }
@@ -620,7 +640,10 @@ class CanvasGame {
     render() {
         if (this.camera) {
             this.renderer.update(this.camera, this.hubs, this.nodlets, this.resources, {
-                influence: 500 + this.upgrades.perks.hubInfluenceRadiusBoost
+                influence: 500 + this.upgrades.perks.hubInfluenceRadiusBoost,
+                activeTargetServer: this.activeTargetServer,
+                selectedServerIndex: this.selectedServerIndex,
+                selectedNodletIndex: this.selectedNodletIndex
             });
         }
     }

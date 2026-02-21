@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Canvas Game - EZ Space</title>
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
     <script src="https://pixijs.download/v8.6.6/pixi.min.js"></script>
 </head>
 <body>
@@ -18,9 +18,8 @@
         
         <div class="hud-top-right">
             <button id="upgradeBtn" class="upgrade-btn">★ UPGRADES (<span id="pointsHUD">0</span>) ★</button>
-            <div class="status-panel">
-                <div class="status-header">Selected Entity</div>
-                <div id="entity-empty" style="font-style: italic; color: #888; padding: 10px; text-align: center;">Select a nodlet or server to inspect</div>
+            <div class="status-panel hidden" id="mainStatusPanel">
+                <div class="status-header" id="statusHeader">Selected Entity</div>
                 
                 <!-- Nodlet Details -->
                 <div id="creature-details" class="hidden" style="display: flex; flex-direction: column; gap: 8px;">

@@ -109,10 +109,11 @@ export class Renderer {
         this.drawGrid(camera);
         this.drawInfluenceZones(hubs, options.influence || 500);
 
-        // We need activeTargetServer info from the game state. Let's pass it via options
-        this.updateResources(resources, options.activeTargetServer);
+        this.targetGraphics.clear();
+
+        this.updateResources(resources, options.activeTargetServer, options.selectedServerIndex);
         this.updateHubs(hubs);
-        this.updateNodlets(nodlets, camera);
+        this.updateNodlets(nodlets, camera, options.selectedNodletIndex);
         this.drawDebug(camera, hubs.count, nodlets.count);
     }
 
@@ -151,7 +152,7 @@ export class Renderer {
         }
     }
 
-    updateResources(resources, activeTargetServer = -1) {
+    updateResources(resources, activeTargetServer = -1, selectedServerIndex = -1) {
         // Grow pool if needed
         while (this.resourceSprites.length < resources.count) {
             const sprite = new PIXI.Sprite();
@@ -160,8 +161,17 @@ export class Renderer {
             this.resourceSprites.push(sprite);
         }
 
+        // Draw Selected Server Highlight (Glow)
+        if (selectedServerIndex !== -1 && selectedServerIndex < resources.count) {
+            const tx = resources.posX[selectedServerIndex];
+            const ty = resources.posY[selectedServerIndex];
+
+            this.targetGraphics.circle(tx, ty, 45)
+                .fill({ color: 0xFFFFFF, alpha: 0.15 })
+                .stroke({ color: 0xFFFFFF, width: 3, alpha: 0.8 });
+        }
+
         // Draw Target highlight
-        this.targetGraphics.clear();
         if (activeTargetServer !== -1 && activeTargetServer < resources.count) {
             const tx = resources.posX[activeTargetServer];
             const ty = resources.posY[activeTargetServer];
@@ -242,9 +252,18 @@ export class Renderer {
         }
     }
 
-    updateNodlets(nodlets, camera) {
+    updateNodlets(nodlets, camera, selectedNodletIndex = -1) {
         const SQUASH_FACTOR = 0.005;
         const MAX_SQUASH = 1.6; // Max stretch
+
+        // Draw Selected Nodlet Highlight (Glow)
+        if (selectedNodletIndex !== -1 && selectedNodletIndex < nodlets.count) {
+            const nx = nodlets.posX[selectedNodletIndex];
+            const ny = nodlets.posY[selectedNodletIndex];
+            this.targetGraphics.circle(nx, ny, 20)
+                .fill({ color: 0xFFFFFF, alpha: 0.2 })
+                .stroke({ color: 0xFFFFFF, width: 2, alpha: 0.9 });
+        }
 
         while (this.nodletSprites.length < nodlets.count) {
             const root = new PIXI.Container();
