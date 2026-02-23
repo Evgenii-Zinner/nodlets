@@ -24,3 +24,7 @@
 ## 2025-05-15 - Optimizing High-Frequency UI with Sprites
 **Learning:** Drawing thousands of dynamic `PIXI.Graphics` shapes per frame (like health bars) is a major performance killer due to geometry reconstruction overhead.
 **Action:** Always prefer using a single 1x1 white pixel texture (`PIXI.Sprite`) for simple rectangular UI elements attached to entities. Use `tint`, `width`, `height`, and `position` to manipulate it. This batches draw calls and avoids geometry uploads.
+
+## 2025-05-15 - Spatial Grid vs Linear Scan
+**Learning:** Maintaining a spatial grid (O(N) rebuild per frame) is a net loss if neighbor lookups are rare (e.g., only on mouse clicks). For 10,000 dynamic entities, rebuilding the grid cost ~0.16ms per frame, while a linear scan on click costs ~0.05ms *once*.
+**Action:** Only implement spatial grids if query frequency * entity count justifies the maintenance cost. For user-interaction-only queries, linear scan is preferred.
