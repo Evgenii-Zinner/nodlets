@@ -446,6 +446,28 @@ class CanvasGame {
         const MAX_WANDER_SPEED = 50 * this.upgrades.perks.nodletSpeedMult;
         const MAX_RETURN_SPEED = 100 * this.upgrades.perks.nodletSpeedMult;
 
+        // Optimization: Pre-calculate valid targets for each Hub to avoid O(N*M) lookup
+        // This turns a 20,000,000 iteration frame (10k nodlets * 2k resources) into a 2,000 iteration frame.
+        const hubTargets = [];
+        const influenceSq = currentInfluence * currentInfluence;
+
+        for(let h = 0; h < this.hubs.count; h++) {
+            const hx = this.hubs.posX[h];
+            const hy = this.hubs.posY[h];
+            const targets = [];
+
+            for(let r = 0; r < this.resources.count; r++) {
+                if (this.resources.type[r] === 0 || this.resources.type[r] === 1) {
+                    const dx = this.resources.posX[r] - hx;
+                    const dy = this.resources.posY[r] - hy;
+                    if (dx*dx + dy*dy <= influenceSq) {
+                        targets.push(r);
+                    }
+                }
+            }
+            hubTargets[h] = targets;
+        }
+
         for (let i = 0; i < this.nodlets.count; i++) {
             // Force capacity update immediately from tree
             this.nodlets.maxDataCapacity[i] = globalNodletCap;
@@ -498,18 +520,8 @@ class CanvasGame {
 
                 // If no valid global target, pick a random server in range
                 if (targetId === -1) {
-                    // Try to pick one if we don't have one cached in intent/wander array (reusing wander timer for target caching)
-                    const potentialTargets = [];
-                    for (let j = 0; j < this.resources.count; j++) {
-                        if (this.resources.type[j] === 0 || this.resources.type[j] === 1) {
-                            const dx = this.resources.posX[j] - hx;
-                            const dy = this.resources.posY[j] - hy;
-                            if (dx * dx + dy * dy <= currentInfluence * currentInfluence) {
-                                potentialTargets.push(j);
-                            }
-                        }
-                    }
-                    if (potentialTargets.length > 0) {
+                    const potentialTargets = hubTargets[hubIdx];
+                    if (potentialTargets && potentialTargets.length > 0) {
                         // Pick random valid server
                         targetId = potentialTargets[Math.floor(Math.random() * potentialTargets.length)];
                     }
