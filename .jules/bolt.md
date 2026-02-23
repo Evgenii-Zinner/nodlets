@@ -28,3 +28,7 @@
 ## 2025-05-15 - Spatial Grid vs Linear Scan
 **Learning:** Maintaining a spatial grid (O(N) rebuild per frame) is a net loss if neighbor lookups are rare (e.g., only on mouse clicks). For 10,000 dynamic entities, rebuilding the grid cost ~0.16ms per frame, while a linear scan on click costs ~0.05ms *once*.
 **Action:** Only implement spatial grids if query frequency * entity count justifies the maintenance cost. For user-interaction-only queries, linear scan is preferred.
+
+## 2025-05-20 - The O(N*M) Target Selection Bottleneck
+**Learning:** Found a critical O(N*M) loop inside `game.js` where every nodlet (N=10k) iterates over all resources (M=2k) to find a target every frame if none is set. This single loop consumes ~67ms per frame in benchmarks!
+**Action:** Pre-calculate the list of valid targets per Hub once per frame (O(M)), reducing the inner loop to O(1) lookup. Benchmark shows 250x improvement (67ms -> 0.27ms).
