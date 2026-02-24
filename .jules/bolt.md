@@ -32,3 +32,7 @@
 ## 2025-05-20 - The O(N*M) Target Selection Bottleneck
 **Learning:** Found a critical O(N*M) loop inside `game.js` where every nodlet (N=10k) iterates over all resources (M=2k) to find a target every frame if none is set. This single loop consumes ~67ms per frame in benchmarks!
 **Action:** Pre-calculate the list of valid targets per Hub once per frame (O(M)), reducing the inner loop to O(1) lookup. Benchmark shows 250x improvement (67ms -> 0.27ms).
+
+## 2025-05-20 - Frustum Culling & Loop Hoisting
+**Learning:** Rendering 10,000 sprites in PixiJS is fast, but updating their properties (position, scale, rotation) in JS every frame is the real bottleneck. Even if Pixi culls them internally, the JS loop overhead remains.
+**Action:** Always implement explicit view frustum culling in the JS update loop for high-entity-count systems. Calculate bounds once, check `x/y`, and `continue` early. Also, hoist global visual effects (like `Math.sin(time)`) out of the entity loop.
