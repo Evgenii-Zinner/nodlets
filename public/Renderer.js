@@ -110,14 +110,24 @@ export class Renderer {
         this.worldContainer.scale.set(camera.zoom);
         this.worldContainer.position.set(-camera.x * camera.zoom, -camera.y * camera.zoom);
 
+        const padding = 100;
+        const width = this.app.screen.width / camera.zoom;
+        const height = this.app.screen.height / camera.zoom;
+        const bounds = {
+            minX: camera.x - padding,
+            maxX: camera.x + width + padding,
+            minY: camera.y - padding,
+            maxY: camera.y + height + padding
+        };
+
         this.drawGrid(camera);
         this.drawInfluenceZones(hubs, options.influence || 500);
 
         this.targetGraphics.clear();
 
-        this.updateResources(resources, options.activeTargetServer, options.selectedServerIndex);
-        this.updateHubs(hubs);
-        this.updateNodlets(nodlets, camera, options.selectedNodletIndex);
+        this.updateResources(resources, bounds, options.activeTargetServer, options.selectedServerIndex);
+        this.updateHubs(hubs, bounds);
+        this.updateNodlets(nodlets, camera, bounds, options.selectedNodletIndex);
         this.drawDebug(camera, hubs.count, nodlets.count);
     }
 
@@ -156,7 +166,7 @@ export class Renderer {
         }
     }
 
-    updateResources(resources, activeTargetServer = -1, selectedServerIndex = -1) {
+    updateResources(resources, bounds, activeTargetServer = -1, selectedServerIndex = -1) {
         // Grow pool if needed
         while (this.resourceSprites.length < resources.count) {
             const sprite = new PIXI.Sprite();
@@ -196,6 +206,14 @@ export class Renderer {
         for (let i = 0; i < this.resourceSprites.length; i++) {
             const sprite = this.resourceSprites[i];
             if (i < resources.count) {
+                // Frustum Culling
+                const rx = resources.posX[i];
+                const ry = resources.posY[i];
+                if (rx < bounds.minX || rx > bounds.maxX || ry < bounds.minY || ry > bounds.maxY) {
+                    sprite.visible = false;
+                    continue;
+                }
+
                 sprite.visible = true;
 
                 // 0: Generator, 1: Relay, 2: Packet
@@ -224,7 +242,7 @@ export class Renderer {
         }
     }
 
-    updateHubs(hubs) {
+    updateHubs(hubs, bounds) {
         while (this.hubSprites.length < hubs.count) {
             const root = new PIXI.Container();
 
@@ -241,8 +259,15 @@ export class Renderer {
             const root = this.hubSprites[i];
 
             if (i < hubs.count) {
+                const hx = hubs.posX[i];
+                const hy = hubs.posY[i];
+                if (hx < bounds.minX || hx > bounds.maxX || hy < bounds.minY || hy > bounds.maxY) {
+                    root.visible = false;
+                    continue;
+                }
+
                 root.visible = true;
-                root.position.set(hubs.posX[i], hubs.posY[i]);
+                root.position.set(hx, hy);
 
                 const body = root.getChildByName('body');
                 const scale = hubs.size[i] / 20.0;
@@ -256,7 +281,7 @@ export class Renderer {
         }
     }
 
-    updateNodlets(nodlets, camera, selectedNodletIndex = -1) {
+    updateNodlets(nodlets, camera, bounds, selectedNodletIndex = -1) {
         const SQUASH_FACTOR = 0.005;
         const MAX_SQUASH = 1.6; // Max stretch
 
@@ -295,12 +320,21 @@ export class Renderer {
             this.nodletSprites.push(root);
         }
 
+        const globalPulse = 1.0 + Math.sin(performance.now() * 0.01) * 0.2;
+
         for (let i = 0; i < this.nodletSprites.length; i++) {
             const root = this.nodletSprites[i];
 
             if (i < nodlets.count) {
+                const nx = nodlets.posX[i];
+                const ny = nodlets.posY[i];
+                if (nx < bounds.minX || nx > bounds.maxX || ny < bounds.minY || ny > bounds.maxY) {
+                    root.visible = false;
+                    continue;
+                }
+
                 root.visible = true;
-                root.position.set(nodlets.posX[i], nodlets.posY[i]);
+                root.position.set(nx, ny);
 
                 const body = root.getChildByName('body');
                 const bars = root.getChildByName('bars');
@@ -322,9 +356,8 @@ export class Renderer {
 
                 // If returning with data, glow or pulsate a bit
                 if (nodlets.state[i] === 1) {
-                    const pulse = 1.0 + Math.sin(performance.now() * 0.01) * 0.2;
-                    body.width *= pulse;
-                    body.height *= pulse;
+                    body.width *= globalPulse;
+                    body.height *= globalPulse;
                 }
 
                 const colorInt = nodlets.color[i];
