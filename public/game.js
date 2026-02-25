@@ -422,13 +422,24 @@ class CanvasGame {
         const maxNodlets = 10 + this.upgrades.perks.nodletAmountBoost;
         const globalNodletCap = 8 + this.upgrades.perks.nodletCapacityBoost;
 
+        // Optimization: Replace O(Hubs * Nodlets) nested loop with two O(N) passes.
+        // 1. Reset active counts and calculate capacity
         for (let i = 0; i < this.hubs.count; i++) {
             this.hubs.baseNodletCapacity[i] = maxNodlets;
-            let active = 0;
-            for (let j = 0; j < this.nodlets.count; j++) {
-                if (this.nodlets.hubId[j] === i) active++;
+            this.hubs.activeNodlets[i] = 0;
+        }
+
+        // 2. Count active nodlets per hub (O(Nodlets))
+        for (let j = 0; j < this.nodlets.count; j++) {
+            const hId = this.nodlets.hubId[j];
+            if (hId >= 0 && hId < this.hubs.count) {
+                this.hubs.activeNodlets[hId]++;
             }
-            this.hubs.activeNodlets[i] = active;
+        }
+
+        // 3. Process Hub Spawning (O(Hubs))
+        for (let i = 0; i < this.hubs.count; i++) {
+            const active = this.hubs.activeNodlets[i];
 
             if (active < this.hubs.baseNodletCapacity[i]) {
                 const angle = Math.random() * Math.PI * 2;
