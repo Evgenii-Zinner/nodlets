@@ -500,15 +500,12 @@ class CanvasGame {
                 }
 
                 // 1. Always check for Packet Collisions first
-                let packetCaught = false;
-                this.resources.forEachNeighbor(cx, cy, 30, (resIdx) => {
-                    if (this.resources.type[resIdx] === 2 && !packetCaught) { // Packet collision
-                        const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
-                        this.nodlets.carriedData[i] += take;
-                        this.resources.despawn(resIdx);
-                        packetCaught = true;
-                    }
-                });
+                const packetIdx = this.resources.findFirstCollision(cx, cy, 30, 2); // Type 2 = Packet
+                if (packetIdx !== -1) {
+                    const take = Math.min(this.resources.amount[packetIdx], maxCarry - this.nodlets.carriedData[i]);
+                    this.nodlets.carriedData[i] += take;
+                    this.resources.despawn(packetIdx);
+                }
 
                 if (this.nodlets.carriedData[i] >= maxCarry) {
                     this.nodlets.state[i] = 1;
