@@ -17,22 +17,6 @@ export class Input {
     }
 
     setupListeners() {
-        // Zoom buttons
-        document.getElementById('zoomIn').addEventListener('click', () => {
-            this.camera.adjustZoom(0.1);
-            this.onZoomChange();
-        });
-
-        document.getElementById('zoomOut').addEventListener('click', () => {
-            this.camera.adjustZoom(-0.1);
-            this.onZoomChange();
-        });
-
-        document.getElementById('resetZoom').addEventListener('click', () => {
-            this.camera.zoom = 1;
-            this.onZoomChange();
-        });
-
         // Mouse wheel zoom
         this.canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
@@ -71,6 +55,150 @@ export class Input {
         this.canvas.addEventListener('mouseleave', () => {
             this.isDragging = false;
         });
+
+
+
+        // Touch controls
+        let initialPinchDistance = null;
+        let initialZoom = null;
+        let lastTouchCentroid = null;
+
+        this.canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                this.isDragging = true;
+                this.dragStartX = e.touches[0].clientX;
+                this.dragStartY = e.touches[0].clientY;
+                this.lastX = e.touches[0].clientX;
+                this.lastY = e.touches[0].clientY;
+                lastTouchCentroid = null;
+            } else if (e.touches.length === 2) {
+                this.isDragging = false;
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                initialPinchDistance = Math.hypot(dx, dy);
+                initialZoom = this.camera.zoom;
+
+                lastTouchCentroid = {
+                    x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+                    y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+                };
+            }
+        }, { passive: false });
+
+        this.canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1 && this.isDragging) {
+                this.camera.pan(e.touches[0].clientX - this.lastX, e.touches[0].clientY - this.lastY);
+                this.lastX = e.touches[0].clientX;
+                this.lastY = e.touches[0].clientY;
+            } else if (e.touches.length === 2 && initialPinchDistance) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.hypot(dx, dy);
+
+                const currentCentroid = {
+                    x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+                    y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+                };
+
+                if (lastTouchCentroid) {
+                    this.camera.pan(currentCentroid.x - lastTouchCentroid.x, currentCentroid.y - lastTouchCentroid.y);
+                }
+
+                const zoomFactor = distance / initialPinchDistance;
+                const targetZoom = initialZoom * zoomFactor;
+                const zoomDelta = targetZoom - this.camera.zoom;
+
+                if (Math.abs(zoomDelta) > 0.01) {
+                    this.camera.adjustZoom(zoomDelta, currentCentroid.x, currentCentroid.y);
+                    this.onZoomChange();
+                }
+
+                lastTouchCentroid = currentCentroid;
+            }
+        }, { passive: false });
+
+        this.canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 0) {
+                if (this.isDragging) {
+                    const moveDist = Math.hypot(this.lastX - this.dragStartX, this.lastY - this.dragStartY);
+                    if (moveDist < 10 && this.onClick) {
+                        this.onClick(this.lastX, this.lastY);
+                    }
+                }
+                this.isDragging = false;
+                initialPinchDistance = null;
+                lastTouchCentroid = null;
+            } else if (e.touches.length === 1) {
+                this.isDragging = true;
+                this.dragStartX = e.touches[0].clientX;
+                this.dragStartY = e.touches[0].clientY;
+                this.lastX = e.touches[0].clientX;
+                this.lastY = e.touches[0].clientY;
+                initialPinchDistance = null;
+                lastTouchCentroid = null;
+            }
+        }, { passive: false });
+
+        this.canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1 && this.isDragging) {
+                this.camera.pan(e.touches[0].clientX - this.lastX, e.touches[0].clientY - this.lastY);
+                this.lastX = e.touches[0].clientX;
+                this.lastY = e.touches[0].clientY;
+                lastTouchCentroid = { x: this.lastX, y: this.lastY };
+            } else if (e.touches.length === 2 && initialPinchDistance) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.hypot(dx, dy);
+
+                const currentCentroid = {
+                    x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+                    y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+                };
+
+                // Panning while zooming
+                if (lastTouchCentroid) {
+                    this.camera.pan(currentCentroid.x - lastTouchCentroid.x, currentCentroid.y - lastTouchCentroid.y);
+                }
+
+                const zoomFactor = distance / initialPinchDistance;
+                const targetZoom = initialZoom * zoomFactor;
+                const zoomDelta = targetZoom - this.camera.zoom;
+
+                this.camera.adjustZoom(zoomDelta, currentCentroid.x, currentCentroid.y);
+                this.onZoomChange();
+
+                lastTouchCentroid = currentCentroid;
+            }
+        }, { passive: false });
+
+        this.canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 0) {
+                if (this.isDragging) {
+                    // Check if it was a tap
+                    const moveDist = Math.hypot(this.lastX - this.dragStartX, this.lastY - this.dragStartY);
+                    if (moveDist < 10 && this.onClick) {
+                        this.onClick(this.lastX, this.lastY);
+                    }
+                }
+                this.isDragging = false;
+                initialPinchDistance = null;
+                lastTouchCentroid = null;
+            } else if (e.touches.length === 1) {
+                // Switching from pinch to pan
+                this.isDragging = true;
+                this.dragStartX = e.touches[0].clientX;
+                this.dragStartY = e.touches[0].clientY;
+                this.lastX = e.touches[0].clientX;
+                this.lastY = e.touches[0].clientY;
+                initialPinchDistance = null;
+                lastTouchCentroid = { x: this.lastX, y: this.lastY };
+            }
+        }, { passive: false });
 
         // Keyboard
         window.addEventListener('keydown', (e) => {

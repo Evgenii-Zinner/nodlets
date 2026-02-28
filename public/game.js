@@ -59,7 +59,7 @@ class CanvasGame {
         this.input = new Input(
             this.renderer.app.canvas,
             this.camera,
-            () => this.updateZoomDisplay(),
+            () => {},
             (sx, sy) => this.handleCanvasClick(sx, sy)
         );
 
@@ -68,7 +68,18 @@ class CanvasGame {
         this.spawnInitialHubs();
         this.spawnInitialServers();
         this.bindTargetEvent();
+
+        // Handle screen resizing
+        window.addEventListener('resize', () => {
+            if (this.camera && this.renderer && this.renderer.app.screen) {
+                // The renderer resizes automatically because of 'resizeTo: container'
+                // We just need to ensure the camera object knows the new screen size
+                // if it caches it. (Looking at Camera.js, it might need updates or it just uses getter)
+            }
+        });
+
         this.gameLoop();
+
     }
 
     spawnInitialHubs() {
@@ -180,13 +191,6 @@ class CanvasGame {
                 btn.title = `${node.name}\nCost: ${node.cost} pt(s)\n${node.desc}`;
             }
         });
-    }
-
-    updateZoomDisplay() {
-        if (this.camera) {
-            document.getElementById('zoomValue').textContent =
-                Math.round(this.camera.zoom * 100) + '%';
-        }
     }
 
     clearSelection() {
@@ -703,4 +707,9 @@ class CanvasGame {
 
 document.addEventListener('DOMContentLoaded', () => {
     new CanvasGame();
+});
+
+// Add resize listener at the end of the file
+window.addEventListener('resize', () => {
+    // Redraw screen size or re-calculate camera dimensions if needed
 });
