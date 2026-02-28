@@ -461,25 +461,20 @@ class CanvasGame {
         const MAX_WANDER_SPEED = 50 * this.upgrades.perks.nodletSpeedMult;
         const MAX_RETURN_SPEED = 100 * this.upgrades.perks.nodletSpeedMult;
 
-        // Optimization: Pre-calculate valid targets for each Hub to avoid O(N*M) lookup
-        // This turns a 20,000,000 iteration frame (10k nodlets * 2k resources) into a 2,000 iteration frame.
+        // Optimization: Pre-calculate valid targets for each Hub using Spatial Grid to avoid O(Hubs * Resources) lookup
+        // This turns a 200,000 iteration frame (100 hubs * 2k resources) into a fast spatial lookup.
         const hubTargets = [];
-        const influenceSq = currentInfluence * currentInfluence;
 
         for(let h = 0; h < this.hubs.count; h++) {
             const hx = this.hubs.posX[h];
             const hy = this.hubs.posY[h];
             const targets = [];
 
-            for(let r = 0; r < this.resources.count; r++) {
+            this.resources.forEachNeighbor(hx, hy, currentInfluence, (r) => {
                 if (this.resources.type[r] === 0 || this.resources.type[r] === 1) {
-                    const dx = this.resources.posX[r] - hx;
-                    const dy = this.resources.posY[r] - hy;
-                    if (dx*dx + dy*dy <= influenceSq) {
-                        targets.push(r);
-                    }
+                    targets.push(r);
                 }
-            }
+            });
             hubTargets[h] = targets;
         }
 
