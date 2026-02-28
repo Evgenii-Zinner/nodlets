@@ -181,7 +181,6 @@ class CanvasGame {
             }
         });
     }
-    }
 
     clearSelection() {
         this.selectedNodletIndex = -1;

@@ -541,3 +541,36 @@ button:active {
         font-size: 10px;
     }
 }
+
+/* Bottom Stats Bar */
+.stats-bottom-bar {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--primary-color);
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(188, 19, 254, 0.3);
+    backdrop-filter: blur(10px);
+    padding: 10px 20px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    color: var(--secondary-color);
+    font-weight: bold;
+    z-index: 10;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .stats-bottom-bar {
+        bottom: 10px;
+        width: calc(100% - 20px);
+        justify-content: space-around;
+        padding: 8px;
+        font-size: 12px;
+        gap: 10px;
+    }
+}
