@@ -40,7 +40,6 @@ class CanvasGame {
         this.selectedNodletIndex = -1;
         this.selectedServerIndex = -1;
         this.activeTargetServer = -1; // Global Target
-        this.serverCount = 0; // Number of static servers spawned at init
 
         this.upgrades = new UpgradeSystem();
 
@@ -68,11 +67,6 @@ class CanvasGame {
 
         this.spawnInitialHubs();
         this.spawnInitialServers();
-
-        // Cache the exact number of static servers (Generators & Relays)
-        // Since they never despawn, they permanently occupy indices 0 through serverCount - 1
-        this.serverCount = this.resources.count;
-
         this.bindTargetEvent();
         this.gameLoop();
     }
@@ -376,10 +370,7 @@ class CanvasGame {
         const generatorIndices = [];
         const relayIndices = [];
 
-        // Optimization: Only scan up to this.serverCount instead of this.resources.count.
-        // This avoids scanning thousands of dynamic packets (type 2) that get spawned/despawned
-        // at higher indices every frame.
-        for (let i = 0; i < this.serverCount; i++) {
+        for (let i = 0; i < this.resources.count; i++) {
             if (this.resources.amount[i] > 50) {
                 if (this.resources.type[i] === 0) generatorIndices.push(i);
                 if (this.resources.type[i] === 1) relayIndices.push(i);
