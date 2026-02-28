@@ -40,3 +40,11 @@
 ## 2025-05-23 - Eliminating Nested Loops in Entity Logic
 **Learning:** Found a nested loop O(Hubs * Nodlets) in `game.js` that counts active nodlets per hub every frame. With 100 hubs and 10,000 nodlets, this is 1,000,000 operations per frame (~1.3ms).
 **Action:** Replaced the nested loop with two O(N) linear passes: one to count nodlets (10k ops) and one to process hubs (100 ops). This reduced complexity to O(Hubs + Nodlets), yielding a ~31x speedup (1.3ms -> 0.04ms). Always verify algorithmic complexity of nested loops even if individual operations seem cheap.
+
+## 2025-05-24 - Entity Arrays and Static Assumptions
+**Learning:** Tried to optimize loops by assuming static servers always occupied the first `N` indices of the `ResourceSystem` arrays. This assumption failed because the `despawn` method uses a "swap-and-pop" strategy. When a static server is despawned, a dynamic packet from the end of the array is swapped into its place, breaking the "static-first" ordering and breaking the loop logic.
+**Action:** Never assume strict ordering in arrays managed by "swap-and-pop" unless the swap logic explicitly enforces partitions (which is complex and error-prone). Rely on spatial partitioning (like `forEachNeighbor`) for filtering entities by location or type instead of iterating over the entire array.
+
+## 2025-05-24 - Replacing O(N*M) Loops with Spatial Grid Lookups
+**Learning:** Found an $O(Hubs \times Resources)$ loop (`100 * 2000 = 200,000` checks per frame) pre-calculating targets for each Hub. Instead of a brute-force distance check against every single resource, utilizing the existing Spatial Grid (`forEachNeighbor`) drops this down to a highly localized spatial query.
+**Action:** Always check if a Spatial Grid already exists before writing O(N*M) nested loops for proximity checks. Existing methods like `forEachNeighbor` are pre-optimized and enforce exact Euclidean boundaries efficiently.
