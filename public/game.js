@@ -59,7 +59,7 @@ class CanvasGame {
         this.input = new Input(
             this.renderer.app.canvas,
             this.camera,
-            () => this.updateZoomDisplay(),
+            () => {},
             (sx, sy) => this.handleCanvasClick(sx, sy)
         );
 
@@ -181,12 +181,6 @@ class CanvasGame {
             }
         });
     }
-
-    updateZoomDisplay() {
-        if (this.camera) {
-            document.getElementById('zoomValue').textContent =
-                Math.round(this.camera.zoom * 100) + '%';
-        }
     }
 
     clearSelection() {
