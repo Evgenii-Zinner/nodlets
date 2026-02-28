@@ -111,36 +111,6 @@ export class ResourceSystem {
         }
     }
 
-    findFirstCollision(x, y, radius, type = -1) {
-        if (!this.grid) return -1;
-        const x1 = Math.floor((x - radius) / this.cellSize);
-        const x2 = Math.floor((x + radius) / this.cellSize);
-        const y1 = Math.floor((y - radius) / this.cellSize);
-        const y2 = Math.floor((y + radius) / this.cellSize);
-        const r2 = radius * radius;
-
-        for (let gy = y1; gy <= y2; gy++) {
-            if (gy < 0 || gy >= this.gridRows) continue;
-            for (let gx = x1; gx <= x2; gx++) {
-                if (gx < 0 || gx >= this.gridCols) continue;
-                let idx = this.grid[gy * this.gridCols + gx];
-                while (idx !== -1) {
-                    if (idx < this.count) {
-                        if (type === -1 || this.type[idx] === type) {
-                            const dx = this.posX[idx] - x;
-                            const dy = this.posY[idx] - y;
-                            if (dx * dx + dy * dy <= r2) {
-                                return idx;
-                            }
-                        }
-                    }
-                    idx = this.nextInCell[idx];
-                }
-            }
-        }
-        return -1;
-    }
-
     update(deltaTime, world) {
         if (!this.grid) this.initGrid(world.width, world.height);
 
