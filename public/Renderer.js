@@ -134,10 +134,6 @@ export class Renderer {
     drawGrid(camera) {
         this.gridGraphics.clear();
         const gridSize = 100;
-
-        // Optimization: skip drawing the grid if it's too dense to be visually useful
-        if (gridSize * camera.zoom < 2) return;
-
         const width = this.app.screen.width / camera.zoom;
         const height = this.app.screen.height / camera.zoom;
 
