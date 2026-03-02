@@ -47,4 +47,6 @@
 
 ## 2025-05-24 - Replacing O(N*M) Loops with Spatial Grid Lookups
 **Learning:** Found an $O(Hubs \times Resources)$ loop (`100 * 2000 = 200,000` checks per frame) pre-calculating targets for each Hub. Instead of a brute-force distance check against every single resource, utilizing the existing Spatial Grid (`forEachNeighbor`) drops this down to a highly localized spatial query.
-**Action:** Always check if a Spatial Grid already exists before writing O(N*M) nested loops for proximity checks. Existing methods like `forEachNeighbor` are pre-optimized and enforce exact Euclidean boundaries efficiently.
+**Action:** Always check if a Spatial Grid already exists before writing O(N*M) nested loops for proximity checks. Existing methods like `forEachNeighbor` are pre-optimized and enforce exact Euclidean boundaries efficiently.## 2026-03-02 - Array Reallocation and Concat inside game loops
+**Learning:** Calling `Array.concat()` or allocating new arrays (`const arr = []`) every frame inside a tight game loop (e.g. 60 FPS) forces constant array instantiations and severely impacts garbage collection overhead.
+**Action:** Always pre-allocate arrays in the class constructor for persistent entity sets (like lists of servers to process) and clear them per-frame by setting `array.length = 0`, then populate them with `.push()`.

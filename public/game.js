@@ -43,6 +43,11 @@ class CanvasGame {
 
         this.upgrades = new UpgradeSystem();
 
+        // Pre-allocated arrays for spawn packets to avoid GC overhead
+        this.generatorIndices = [];
+        this.relayIndices = [];
+        this.allServers = [];
+
         this.init();
     }
 
@@ -371,22 +376,27 @@ class CanvasGame {
         }
 
         // Spawn Packets periodically
-        const generatorIndices = [];
-        const relayIndices = [];
+        this.generatorIndices.length = 0;
+        this.relayIndices.length = 0;
+        this.allServers.length = 0;
 
         for (let i = 0; i < this.resources.count; i++) {
             if (this.resources.amount[i] > 50) {
-                if (this.resources.type[i] === 0) generatorIndices.push(i);
-                if (this.resources.type[i] === 1) relayIndices.push(i);
+                if (this.resources.type[i] === 0) {
+                    this.generatorIndices.push(i);
+                    this.allServers.push(i);
+                } else if (this.resources.type[i] === 1) {
+                    this.relayIndices.push(i);
+                    this.allServers.push(i);
+                }
             }
         }
 
         // Generators emit rarely (2% chance per frame)
-        if (generatorIndices.length > 0 && Math.random() < 0.1) {
-            const s1 = generatorIndices[Math.floor(Math.random() * generatorIndices.length)];
+        if (this.generatorIndices.length > 0 && Math.random() < 0.1) {
+            const s1 = this.generatorIndices[Math.floor(Math.random() * this.generatorIndices.length)];
             // Pick a random target (any server)
-            const allServers = generatorIndices.concat(relayIndices);
-            let s2 = allServers[Math.floor(Math.random() * allServers.length)];
+            let s2 = this.allServers[Math.floor(Math.random() * this.allServers.length)];
 
             if (s1 !== s2) {
                 const chunk = 20 + Math.random() * 30;
@@ -400,11 +410,10 @@ class CanvasGame {
         }
 
         // Relays emit frequently (15% chance per frame)
-        if (relayIndices.length > 0 && Math.random() < 0.25) {
-            const s1 = relayIndices[Math.floor(Math.random() * relayIndices.length)];
+        if (this.relayIndices.length > 0 && Math.random() < 0.25) {
+            const s1 = this.relayIndices[Math.floor(Math.random() * this.relayIndices.length)];
             // Pick a random target (any server)
-            const allServers = generatorIndices.concat(relayIndices);
-            let s2 = allServers[Math.floor(Math.random() * allServers.length)];
+            let s2 = this.allServers[Math.floor(Math.random() * this.allServers.length)];
 
             if (s1 !== s2) {
                 const chunk = 20 + Math.random() * 30;
