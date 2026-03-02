@@ -48,6 +48,9 @@ class CanvasGame {
         this.relayIndices = [];
         this.allServers = [];
 
+        // Pre-allocated array of arrays for spatial grid optimization
+        this.hubTargets = Array.from({ length: this.hubs.maxHubs }, () => []);
+
         this.init();
     }
 
@@ -472,19 +475,20 @@ class CanvasGame {
 
         // Optimization: Pre-calculate valid targets for each Hub using Spatial Grid to avoid O(Hubs * Resources) lookup
         // This turns a 200,000 iteration frame (100 hubs * 2k resources) into a fast spatial lookup.
-        const hubTargets = [];
 
         for(let h = 0; h < this.hubs.count; h++) {
             const hx = this.hubs.posX[h];
             const hy = this.hubs.posY[h];
-            const targets = [];
+
+            // Reuse pre-allocated arrays to avoid GC pressure
+            const targets = this.hubTargets[h];
+            targets.length = 0;
 
             this.resources.forEachNeighbor(hx, hy, currentInfluence, (r) => {
                 if (this.resources.type[r] === 0 || this.resources.type[r] === 1) {
                     targets.push(r);
                 }
             });
-            hubTargets[h] = targets;
         }
 
         for (let i = 0; i < this.nodlets.count; i++) {
@@ -539,7 +543,7 @@ class CanvasGame {
 
                 // If no valid global target, pick a random server in range
                 if (targetId === -1) {
-                    const potentialTargets = hubTargets[hubIdx];
+                    const potentialTargets = this.hubTargets[hubIdx];
                     if (potentialTargets && potentialTargets.length > 0) {
                         // Pick random valid server
                         targetId = potentialTargets[Math.floor(Math.random() * potentialTargets.length)];
