@@ -27,6 +27,9 @@ export class ResourceSystem {
         this.gridRows = 0;
         this.nextInCell = new Int32Array(maxResources);
         this.dirtyGrid = true;
+
+        // Pre-allocated array for internal queries to avoid GC
+        this._queryResults = [];
     }
 
     initGrid(worldWidth, worldHeight) {
@@ -84,7 +87,11 @@ export class ResourceSystem {
         return idx;
     }
 
-    forEachNeighbor(x, y, radius, callback) {
+    /**
+     * Finds all resources within `radius` of `x, y` and appends their indices to `outArray`.
+     * ⚡ Bolt Optimization: Avoids closure allocations by mutating a passed array.
+     */
+    getNeighbors(x, y, radius, outArray) {
         if (!this.grid) return;
         const x1 = Math.floor((x - radius) / this.cellSize);
         const x2 = Math.floor((x + radius) / this.cellSize);
@@ -102,7 +109,7 @@ export class ResourceSystem {
                         const dx = this.posX[idx] - x;
                         const dy = this.posY[idx] - y;
                         if (dx * dx + dy * dy <= r2) {
-                            callback(idx);
+                            outArray.push(idx);
                         }
                     }
                     idx = this.nextInCell[idx];
@@ -130,7 +137,11 @@ export class ResourceSystem {
                 // If it reached the destination (arbitrary small radius 100)
                 if (distSq < 100) {
                     // Find the destination server to add data to it (if it has capacity)
-                    this.forEachNeighbor(this.posX[i], this.posY[i], 50, (neighborIdx) => {
+                    this._queryResults.length = 0;
+                    this.getNeighbors(this.posX[i], this.posY[i], 50, this._queryResults);
+
+                    for (let k = 0; k < this._queryResults.length; k++) {
+                        const neighborIdx = this._queryResults[k];
                         if (this.type[neighborIdx] === 0 || this.type[neighborIdx] === 1) {
                             if (this.amount[neighborIdx] < this.maxAmount[neighborIdx]) {
                                 this.amount[neighborIdx] += this.amount[i];
@@ -139,7 +150,7 @@ export class ResourceSystem {
                                 }
                             }
                         }
-                    });
+                    }
 
                     this.despawn(i);
                     i--;
