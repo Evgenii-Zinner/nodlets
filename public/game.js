@@ -51,6 +51,9 @@ class CanvasGame {
         // Pre-allocated array of arrays for spatial grid optimization
         this.hubTargets = Array.from({ length: this.hubs.maxHubs }, () => []);
 
+        // Pre-allocated array for retrieving neighbors without closure allocations
+        this.tempNeighbors = [];
+
         this.init();
     }
 
@@ -326,8 +329,11 @@ class CanvasGame {
         let minDistServer = 60 / this.camera.zoom; // Servers are larger
 
         // Check Servers first
-        this.resources.forEachNeighbor(worldPos.x, worldPos.y, 100, (idx) => {
-            if (this.resources.type[idx] !== 0 && this.resources.type[idx] !== 1) return; // Only click generators or relays
+        this.tempNeighbors.length = 0;
+        this.resources.getNeighbors(worldPos.x, worldPos.y, 100, this.tempNeighbors);
+        for (let i = 0; i < this.tempNeighbors.length; i++) {
+            const idx = this.tempNeighbors[i];
+            if (this.resources.type[idx] !== 0 && this.resources.type[idx] !== 1) continue; // Only click generators or relays
             const dx = this.resources.posX[idx] - worldPos.x;
             const dy = this.resources.posY[idx] - worldPos.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -335,7 +341,7 @@ class CanvasGame {
                 minDistServer = dist;
                 nearestServer = idx;
             }
-        });
+        }
 
         // Check Nodlets
         this.nodlets.forEachNeighbor(worldPos.x, worldPos.y, 50, (idx) => {
@@ -484,11 +490,14 @@ class CanvasGame {
             const targets = this.hubTargets[h];
             targets.length = 0;
 
-            this.resources.forEachNeighbor(hx, hy, currentInfluence, (r) => {
+            this.tempNeighbors.length = 0;
+            this.resources.getNeighbors(hx, hy, currentInfluence, this.tempNeighbors);
+            for (let i = 0; i < this.tempNeighbors.length; i++) {
+                const r = this.tempNeighbors[i];
                 if (this.resources.type[r] === 0 || this.resources.type[r] === 1) {
                     targets.push(r);
                 }
-            });
+            }
         }
 
         for (let i = 0; i < this.nodlets.count; i++) {
@@ -513,14 +522,17 @@ class CanvasGame {
 
                 // 1. Always check for Packet Collisions first
                 let packetCaught = false;
-                this.resources.forEachNeighbor(cx, cy, 30, (resIdx) => {
+                this.tempNeighbors.length = 0;
+                this.resources.getNeighbors(cx, cy, 30, this.tempNeighbors);
+                for (let k = 0; k < this.tempNeighbors.length; k++) {
+                    const resIdx = this.tempNeighbors[k];
                     if (this.resources.type[resIdx] === 2 && !packetCaught) { // Packet collision
                         const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
                         this.nodlets.carriedData[i] += take;
                         this.resources.despawn(resIdx);
                         packetCaught = true;
                     }
-                });
+                }
 
                 if (this.nodlets.carriedData[i] >= maxCarry) {
                     this.nodlets.state[i] = 1;
