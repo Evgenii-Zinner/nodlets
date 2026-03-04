@@ -50,3 +50,7 @@
 **Action:** Always check if a Spatial Grid already exists before writing O(N*M) nested loops for proximity checks. Existing methods like `forEachNeighbor` are pre-optimized and enforce exact Euclidean boundaries efficiently.## 2026-03-02 - Array Reallocation and Concat inside game loops
 **Learning:** Calling `Array.concat()` or allocating new arrays (`const arr = []`) every frame inside a tight game loop (e.g. 60 FPS) forces constant array instantiations and severely impacts garbage collection overhead.
 **Action:** Always pre-allocate arrays in the class constructor for persistent entity sets (like lists of servers to process) and clear them per-frame by setting `array.length = 0`, then populate them with `.push()`.
+
+## 2026-03-02 - PIXI.js String Lookups in Hot Loops
+**Learning:** Using `getChildByName()` in PIXI.js performs a linear scan through `children` arrays using string matching on the `name` property. Inside `updateNodlets` and `updateHubs`, this forced O(N) string comparisons on tens of thousands of entities *every frame*.
+**Action:** Never use `getChildByName()` in high-frequency rendering loops. Instead, cache direct references to child display objects onto their parent container during initialization (e.g., `root._body = body;`) to allow instantaneous O(1) property access.

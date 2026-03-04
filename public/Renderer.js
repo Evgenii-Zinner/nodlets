@@ -250,6 +250,7 @@ export class Renderer {
             body.name = 'body';
             body.anchor.set(0.5);
             root.addChild(body);
+            root._body = body;
 
             this.hubContainer.addChild(root);
             this.hubSprites.push(root);
@@ -269,7 +270,7 @@ export class Renderer {
                 root.visible = true;
                 root.position.set(hx, hy);
 
-                const body = root.getChildByName('body');
+                const body = root._body;
                 const scale = hubs.size[i] / 20.0;
                 body.scale.set(scale);
 
@@ -301,11 +302,13 @@ export class Renderer {
             body.name = 'body';
             body.anchor.set(0.5);
             root.addChild(body);
+            root._body = body;
 
             // Container for bars
             const bars = new PIXI.Container();
             bars.name = 'bars';
             root.addChild(bars);
+            root._bars = bars;
 
             const bg = new PIXI.Sprite(this.pixelTexture);
             bg.name = 'bg';
@@ -315,6 +318,8 @@ export class Renderer {
             fill.anchor.set(0.5, 1.0);
             bars.addChild(bg);
             bars.addChild(fill);
+            bars._bg = bg;
+            bars._fill = fill;
 
             this.nodletContainer.addChild(root);
             this.nodletSprites.push(root);
@@ -336,8 +341,8 @@ export class Renderer {
                 root.visible = true;
                 root.position.set(nx, ny);
 
-                const body = root.getChildByName('body');
-                const bars = root.getChildByName('bars');
+                const body = root._body;
+                const bars = root._bars;
 
                 const vx = nodlets.velX[i];
                 const vy = nodlets.velY[i];
@@ -371,8 +376,8 @@ export class Renderer {
                     const barHeight = 2;
                     const yOffset = -nodlets.size[i]; // Bottom of the bar is top of the nodlet (radius approx)
 
-                    const bg = bars.getChildByName('bg');
-                    const fill = bars.getChildByName('fill');
+                    const bg = bars._bg;
+                    const fill = bars._fill;
 
                     // Update BG
                     bg.width = barWidth;
