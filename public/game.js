@@ -500,6 +500,9 @@ class CanvasGame {
             }
         }
 
+        const force = 60 * deltaTime * this.upgrades.perks.nodletSpeedMult;
+        const orbitSpeed = 150 * deltaTime * this.upgrades.perks.nodletSpeedMult;
+
         for (let i = 0; i < this.nodlets.count; i++) {
             // Force capacity update immediately from tree
             this.nodlets.maxDataCapacity[i] = globalNodletCap;
@@ -575,9 +578,8 @@ class CanvasGame {
                         // Fly towards target
                         this.nodlets.state[i] = 0; // Seeking
                         const dist = Math.sqrt(distSq);
-                        const force = 60 * deltaTime;
-                        this.nodlets.velX[i] += (dx / dist) * force * this.upgrades.perks.nodletSpeedMult;
-                        this.nodlets.velY[i] += (dy / dist) * force * this.upgrades.perks.nodletSpeedMult;
+                        this.nodlets.velX[i] += (dx / dist) * force;
+                        this.nodlets.velY[i] += (dy / dist) * force;
                     } else {
                         // Orbiting
                         this.nodlets.state[i] = 2; // Orbiting
@@ -594,7 +596,6 @@ class CanvasGame {
                         const pullY = (dy / dist) * pullFactor;
 
                         // Orbit speed (significantly faster as requested)
-                        const orbitSpeed = 150 * deltaTime * this.upgrades.perks.nodletSpeedMult;
                         const tangentX = (pX / dist) * orbitSpeed;
                         const tangentY = (pY / dist) * orbitSpeed;
 
