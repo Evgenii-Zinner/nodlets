@@ -54,7 +54,36 @@ class CanvasGame {
         // Pre-allocated array for retrieving neighbors without closure allocations
         this.tempNeighbors = [];
 
+        this.ui = {}; // Bolt Optimization: Cache DOM references to avoid O(N) lookup per frame
+        this.initUI();
+
         this.init();
+    }
+
+    initUI() {
+        this.ui.upgradeBtn = document.getElementById('upgradeBtn');
+        this.ui.upgradeModal = document.getElementById('upgradeModal');
+        this.ui.closeModalBtn = document.getElementById('closeModalBtn');
+
+        this.ui.setTargetBtn = document.getElementById('setTargetBtn');
+
+        this.ui.availablePoints = document.getElementById('availablePoints');
+        this.ui.pointsHUD = document.getElementById('pointsHUD');
+
+        this.ui.mainStatusPanel = document.getElementById('mainStatusPanel');
+        this.ui.nDetails = document.getElementById('creature-details');
+        this.ui.sDetails = document.getElementById('server-details');
+
+        this.ui.creatureState = document.getElementById('creatureState');
+        this.ui.creatureIntelligence = document.getElementById('creatureIntelligence');
+        this.ui.creatureIntent = document.getElementById('creatureIntent');
+        this.ui.creatureCount = document.getElementById('creatureCount');
+
+        this.ui.totalDataConsumed = document.getElementById('totalDataConsumed');
+
+        this.ui.serverTypeLabel = document.getElementById('serverTypeLabel');
+        this.ui.serverDataAmount = document.getElementById('serverDataAmount');
+        this.ui.serverDataMax = document.getElementById('serverDataMax');
     }
 
     async init() {
@@ -112,28 +141,23 @@ class CanvasGame {
 
     // Modal UI handled via HTML/CSS layout (to be implemented next)
     bindUpgradeEvents() {
-        const btn = document.getElementById('upgradeBtn');
-        const modal = document.getElementById('upgradeModal');
-        const closeBtn = document.getElementById('closeModalBtn'); // Assuming we add this
-
-        if (btn) {
-            btn.addEventListener('click', () => {
+        if (this.ui.upgradeBtn) {
+            this.ui.upgradeBtn.addEventListener('click', () => {
                 this.renderUpgradeTree();
-                modal.classList.remove('hidden');
+                this.ui.upgradeModal.classList.remove('hidden');
             });
         }
 
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                modal.classList.add('hidden');
+        if (this.ui.closeModalBtn) {
+            this.ui.closeModalBtn.addEventListener('click', () => {
+                this.ui.upgradeModal.classList.add('hidden');
             });
         }
     }
 
     bindTargetEvent() {
-        const btn = document.getElementById('setTargetBtn');
-        if (btn) {
-            btn.addEventListener('click', () => {
+        if (this.ui.setTargetBtn) {
+            this.ui.setTargetBtn.addEventListener('click', () => {
                 if (this.selectedServerIndex !== -1) {
                     if (this.activeTargetServer === this.selectedServerIndex) {
                         this.activeTargetServer = -1; // Deselect
@@ -150,8 +174,7 @@ class CanvasGame {
 
     renderUpgradeTree() {
         // This will bind to the new HTML layout
-        const ptsEl = document.getElementById('availablePoints');
-        if (ptsEl) ptsEl.textContent = this.upgrades.availablePoints;
+        if (this.ui.availablePoints) this.ui.availablePoints.textContent = this.upgrades.availablePoints;
 
         // Tier 1 UI
         const t1Keys = ['capacity', 'speed', 'influence', 'amount'];
@@ -208,87 +231,64 @@ class CanvasGame {
         this.selectedNodletIndex = -1;
         this.selectedServerIndex = -1;
 
-        const mainPanel = document.getElementById('mainStatusPanel');
-        const nDetails = document.getElementById('creature-details');
-        const sDetails = document.getElementById('server-details');
-
-        if (mainPanel) mainPanel.classList.add('hidden');
-        if (nDetails) nDetails.classList.add('hidden');
-        if (sDetails) sDetails.classList.add('hidden');
+        if (this.ui.mainStatusPanel) this.ui.mainStatusPanel.classList.add('hidden');
+        if (this.ui.nDetails) this.ui.nDetails.classList.add('hidden');
+        if (this.ui.sDetails) this.ui.sDetails.classList.add('hidden');
     }
 
     updateNodletStatus(nodletIndex) {
-        const mainPanel = document.getElementById('mainStatusPanel');
-        const nDetails = document.getElementById('creature-details');
-        const sDetails = document.getElementById('server-details');
-
-        if (mainPanel) mainPanel.classList.remove('hidden');
-        if (sDetails) sDetails.classList.add('hidden');
-        if (nDetails) nDetails.classList.remove('hidden');
+        if (this.ui.mainStatusPanel) this.ui.mainStatusPanel.classList.remove('hidden');
+        if (this.ui.sDetails) this.ui.sDetails.classList.add('hidden');
+        if (this.ui.nDetails) this.ui.nDetails.classList.remove('hidden');
 
         if (nodletIndex < 0 || nodletIndex >= this.nodlets.count) return;
 
         this.selectedNodletIndex = nodletIndex;
 
-        const stateEl = document.getElementById('creatureState');
-        const dataCountEl = document.getElementById('creatureIntelligence');
-        const intentEl = document.getElementById('creatureIntent');
-
         const state = this.nodlets.state[nodletIndex];
         const stateLabels = ['Seeking Data', 'Returning to Hub'];
 
-        if (stateEl) {
-            stateEl.textContent = state === 1 ? 'Returning' : 'Seeking';
-            stateEl.className = `status-state ${state === 1 ? 'charging' : 'wandering'}`;
+        if (this.ui.creatureState) {
+            this.ui.creatureState.textContent = state === 1 ? 'Returning' : 'Seeking';
+            this.ui.creatureState.className = `status-state ${state === 1 ? 'charging' : 'wandering'}`;
         }
 
-        if (intentEl) {
-            intentEl.textContent = stateLabels[state] || 'None';
+        if (this.ui.creatureIntent) {
+            this.ui.creatureIntent.textContent = stateLabels[state] || 'None';
         }
 
-        dataCountEl.textContent = Math.round(this.nodlets.carriedData[nodletIndex]) + ' / ' + Math.round(this.nodlets.maxDataCapacity[nodletIndex]);
+        if (this.ui.creatureIntelligence) {
+            this.ui.creatureIntelligence.textContent = Math.round(this.nodlets.carriedData[nodletIndex]) + ' / ' + Math.round(this.nodlets.maxDataCapacity[nodletIndex]);
+        }
     }
 
     updateCounts() {
-        const countEl = document.getElementById('creatureCount');
-        if (countEl) countEl.textContent = this.nodlets.count;
+        if (this.ui.creatureCount) this.ui.creatureCount.textContent = this.nodlets.count;
     }
 
     updateGlobalStats() {
-        const dataEl = document.getElementById('totalDataConsumed');
-        if (dataEl) dataEl.textContent = Math.floor(this.upgrades.totalDataEarned);
-
-        const pointsEl = document.getElementById('pointsHUD'); // Add this to HTML
-        if (pointsEl) pointsEl.textContent = this.upgrades.availablePoints;
+        if (this.ui.totalDataConsumed) this.ui.totalDataConsumed.textContent = Math.floor(this.upgrades.totalDataEarned);
+        if (this.ui.pointsHUD) this.ui.pointsHUD.textContent = this.upgrades.availablePoints;
     }
 
     updateServerStatus(serverIndex) {
-        const mainPanel = document.getElementById('mainStatusPanel');
-        const nDetails = document.getElementById('creature-details');
-        const sDetails = document.getElementById('server-details');
-
-        if (mainPanel) mainPanel.classList.remove('hidden');
-        if (nDetails) nDetails.classList.add('hidden');
-        if (sDetails) sDetails.classList.remove('hidden');
+        if (this.ui.mainStatusPanel) this.ui.mainStatusPanel.classList.remove('hidden');
+        if (this.ui.nDetails) this.ui.nDetails.classList.add('hidden');
+        if (this.ui.sDetails) this.ui.sDetails.classList.remove('hidden');
 
         if (serverIndex < 0 || serverIndex >= this.resources.count) return;
         this.selectedServerIndex = serverIndex;
 
-        const typeEl = document.getElementById('serverTypeLabel');
-        const amtEl = document.getElementById('serverDataAmount');
-        const maxEl = document.getElementById('serverDataMax');
-        const targetBtn = document.getElementById('setTargetBtn');
-
-        if (typeEl) {
-            typeEl.textContent = this.resources.type[serverIndex] === 0 ? 'Generator' : 'Relay';
-            typeEl.style.color = this.resources.type[serverIndex] === 0 ? '#ff00ff' : '#00F3FF'; // Purple vs Cyan
+        if (this.ui.serverTypeLabel) {
+            this.ui.serverTypeLabel.textContent = this.resources.type[serverIndex] === 0 ? 'Generator' : 'Relay';
+            this.ui.serverTypeLabel.style.color = this.resources.type[serverIndex] === 0 ? '#ff00ff' : '#00F3FF'; // Purple vs Cyan
         }
 
-        amtEl.textContent = Math.floor(this.resources.amount[serverIndex]);
-        maxEl.textContent = Math.floor(this.resources.maxAmount[serverIndex]);
+        if (this.ui.serverDataAmount) this.ui.serverDataAmount.textContent = Math.floor(this.resources.amount[serverIndex]);
+        if (this.ui.serverDataMax) this.ui.serverDataMax.textContent = Math.floor(this.resources.maxAmount[serverIndex]);
 
         // Hide targeting button if outside influence radius
-        if (targetBtn) {
+        if (this.ui.setTargetBtn) {
             const hx = this.hubs.posX[0]; // Assuming one main hub for now
             const hy = this.hubs.posY[0];
             const sx = this.resources.posX[serverIndex];
@@ -300,20 +300,20 @@ class CanvasGame {
             const currentInfluence = 500 + this.upgrades.perks.hubInfluenceRadiusBoost;
 
             if (distSq <= currentInfluence * currentInfluence) {
-                targetBtn.style.display = 'block';
+                this.ui.setTargetBtn.style.display = 'block';
                 if (this.activeTargetServer === serverIndex) {
-                    targetBtn.textContent = 'REMOVE TARGET';
-                    targetBtn.style.opacity = '1';
-                    targetBtn.style.cursor = 'pointer';
-                    targetBtn.style.background = 'linear-gradient(135deg, #ff0044, #ff6600)';
+                    this.ui.setTargetBtn.textContent = 'REMOVE TARGET';
+                    this.ui.setTargetBtn.style.opacity = '1';
+                    this.ui.setTargetBtn.style.cursor = 'pointer';
+                    this.ui.setTargetBtn.style.background = 'linear-gradient(135deg, #ff0044, #ff6600)';
                 } else {
-                    targetBtn.textContent = 'SET AS TARGET';
-                    targetBtn.style.opacity = '1';
-                    targetBtn.style.cursor = 'pointer';
-                    targetBtn.style.background = ''; // Revert to stylesheet default
+                    this.ui.setTargetBtn.textContent = 'SET AS TARGET';
+                    this.ui.setTargetBtn.style.opacity = '1';
+                    this.ui.setTargetBtn.style.cursor = 'pointer';
+                    this.ui.setTargetBtn.style.background = ''; // Revert to stylesheet default
                 }
             } else {
-                targetBtn.style.display = 'none';
+                this.ui.setTargetBtn.style.display = 'none';
             }
         }
     }
@@ -375,12 +375,11 @@ class CanvasGame {
 
     update(deltaTime) {
         // Upgrade button logic
-        const btn = document.getElementById('upgradeBtn');
-        if (btn) {
+        if (this.ui.upgradeBtn) {
             if (this.upgrades.availablePoints > 0) {
-                btn.classList.add('can-upgrade'); // visual cue to be styled
+                this.ui.upgradeBtn.classList.add('can-upgrade'); // visual cue to be styled
             } else {
-                btn.classList.remove('can-upgrade');
+                this.ui.upgradeBtn.classList.remove('can-upgrade');
             }
         }
 
