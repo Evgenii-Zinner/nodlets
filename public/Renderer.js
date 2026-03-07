@@ -313,9 +313,16 @@ export class Renderer {
             const bg = new PIXI.Sprite(this.pixelTexture);
             bg.name = 'bg';
             bg.anchor.set(0.5, 1.0);
+            bg.tint = 0x000000;
+            bg.alpha = 0.5;
+            bg.height = 2;
+
             const fill = new PIXI.Sprite(this.pixelTexture);
             fill.name = 'fill';
-            fill.anchor.set(0.5, 1.0);
+            fill.anchor.set(0, 1.0);
+            fill.tint = 0x00F3FF;
+            fill.height = 2;
+
             bars.addChild(bg);
             bars.addChild(fill);
             bars._bg = bg;
@@ -352,8 +359,8 @@ export class Renderer {
                 const squash = 1.0 / stretch;
 
                 const baseSize = nodlets.size[i];
-                body.width = baseSize * stretch;
-                body.height = baseSize * squash;
+                let targetWidth = baseSize * stretch;
+                let targetHeight = baseSize * squash;
 
                 if (speed > 0.1) {
                     body.rotation = Math.atan2(vy, vx);
@@ -361,9 +368,12 @@ export class Renderer {
 
                 // If returning with data, glow or pulsate a bit
                 if (nodlets.state[i] === 1) {
-                    body.width *= globalPulse;
-                    body.height *= globalPulse;
+                    targetWidth *= globalPulse;
+                    targetHeight *= globalPulse;
                 }
+
+                body.width = targetWidth;
+                body.height = targetHeight;
 
                 const colorInt = nodlets.color[i];
                 body.tint = (colorInt >> 8) & 0xFFFFFF;
@@ -373,7 +383,6 @@ export class Renderer {
                     // Draw Data Bar instead of Energy
                     const dataPercent = nodlets.carriedData[i] / nodlets.maxDataCapacity[i];
                     const barWidth = nodlets.size[i];
-                    const barHeight = 2;
                     const yOffset = -nodlets.size[i]; // Bottom of the bar is top of the nodlet (radius approx)
 
                     const bg = bars._bg;
@@ -381,18 +390,11 @@ export class Renderer {
 
                     // Update BG
                     bg.width = barWidth;
-                    bg.height = barHeight;
                     bg.position.set(0, yOffset);
-                    bg.tint = 0x000000;
-                    bg.alpha = 0.5;
 
                     // Cyan for data
-                    const dataColor = 0x00F3FF;
                     fill.width = barWidth * dataPercent;
-                    fill.height = barHeight;
-                    fill.anchor.set(0, 1.0);
                     fill.position.set(-barWidth / 2, yOffset);
-                    fill.tint = dataColor;
                 } else {
                     bars.visible = false;
                 }
