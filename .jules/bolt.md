@@ -57,3 +57,7 @@
 ## 2026-03-02 - PIXI Property Assignment and Math Hoisting in Loops
 **Learning:** Re-assigning constant visual properties (like PIXI Sprite `tint`, `alpha`, and `anchor`) inside a 10,000-entity loop every frame introduces significant overhead. Furthermore, mutating dimensions like `width` and `height` multiple times consecutively forces unnecessary PIXI transform cache invalidations. In mathematical game loops, keeping complex deterministic calculations inside the loop causes extreme performance decay (e.g., repeating `orbitSpeed` calculation 10,000 times instead of once).
 **Action:** Always pre-initialize constant visual properties during Sprite creation. Calculate the final target `width` and `height` variables in standard JS first, then assign them to the PIXI object once. Hoist purely deterministic mathematical expressions (using `deltaTime` or static multipliers) outside of large entity loops.
+
+## 2026-03-09 - High-Frequency DOM Lookups
+**Learning:** Using `document.getElementById` repeatedly inside recurring update loops (like the `update` loop in `game.js`) causes unnecessary overhead by crossing the JS/C++ boundary every time. In benchmarks, repeated lookup calls took over twice as much time as accessing a cached reference (74ms vs 32ms for 1000 iterations).
+**Action:** Always pre-cache DOM elements in high-frequency update logic into an object/class property (like `this.ui`) upon initialization to turn O(N) DOM lookups into O(1) JavaScript property accesses.
