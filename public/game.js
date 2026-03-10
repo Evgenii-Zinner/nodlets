@@ -52,7 +52,7 @@ class CanvasGame {
         this.hubTargets = Array.from({ length: this.hubs.maxHubs }, () => []);
 
         // Pre-allocated array for retrieving neighbors without closure allocations
-        this.tempNeighbors = [];
+        this.tempNeighbors = new Int32Array(this.resources.maxResources);
 
         // DOM Element Cache
         this.ui = {};
@@ -342,9 +342,8 @@ class CanvasGame {
         let minDistServer = 60 / this.camera.zoom; // Servers are larger
 
         // Check Servers first
-        this.tempNeighbors.length = 0;
-        this.resources.getNeighbors(worldPos.x, worldPos.y, 100, this.tempNeighbors);
-        for (let i = 0; i < this.tempNeighbors.length; i++) {
+        let neighborCount = this.resources.getNeighbors(worldPos.x, worldPos.y, 100, this.tempNeighbors);
+        for (let i = 0; i < neighborCount; i++) {
             const idx = this.tempNeighbors[i];
             if (this.resources.type[idx] !== 0 && this.resources.type[idx] !== 1) continue; // Only click generators or relays
             const dx = this.resources.posX[idx] - worldPos.x;
@@ -502,9 +501,8 @@ class CanvasGame {
             const targets = this.hubTargets[h];
             targets.length = 0;
 
-            this.tempNeighbors.length = 0;
-            this.resources.getNeighbors(hx, hy, currentInfluence, this.tempNeighbors);
-            for (let i = 0; i < this.tempNeighbors.length; i++) {
+            let count = this.resources.getNeighbors(hx, hy, currentInfluence, this.tempNeighbors);
+            for (let i = 0; i < count; i++) {
                 const r = this.tempNeighbors[i];
                 if (this.resources.type[r] === 0 || this.resources.type[r] === 1) {
                     targets.push(r);
@@ -537,9 +535,8 @@ class CanvasGame {
 
                 // 1. Always check for Packet Collisions first
                 let packetCaught = false;
-                this.tempNeighbors.length = 0;
-                this.resources.getNeighbors(cx, cy, 30, this.tempNeighbors);
-                for (let k = 0; k < this.tempNeighbors.length; k++) {
+                let numNeighbors = this.resources.getNeighbors(cx, cy, 30, this.tempNeighbors);
+                for (let k = 0; k < numNeighbors; k++) {
                     const resIdx = this.tempNeighbors[k];
                     if (this.resources.type[resIdx] === 2 && !packetCaught) { // Packet collision
                         const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
