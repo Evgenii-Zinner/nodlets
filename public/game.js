@@ -417,16 +417,6 @@ class CanvasGame {
             }
         }
 
-        // ⚡ Bolt Optimization: Avoid redundant per-frame writes to TypedArrays for global upgrades.
-        // Only update the entire nodlet array when the global cap actually changes or when nodlets are spawned/despawned.
-        if (this._lastGlobalNodletCap !== globalNodletCap || this._lastNodletCount !== this.nodlets.count) {
-            for (let i = 0; i < this.nodlets.count; i++) {
-                this.nodlets.maxDataCapacity[i] = globalNodletCap;
-            }
-            this._lastGlobalNodletCap = globalNodletCap;
-            this._lastNodletCount = this.nodlets.count;
-        }
-
         // Generators emit rarely (2% chance per frame)
         if (this.generatorIndices.length > 0 && Math.random() < 0.1) {
             const s1 = this.generatorIndices[Math.floor(Math.random() * this.generatorIndices.length)];
@@ -499,6 +489,16 @@ class CanvasGame {
                     this.nodlets.maxDataCapacity[nIdx] = globalNodletCap;
                 }
             }
+        }
+
+        // ⚡ Bolt Optimization: Avoid redundant per-frame writes to TypedArrays for global upgrades.
+        // Only update the entire nodlet array when the global cap actually changes or when nodlets are spawned/despawned.
+        if (this._lastGlobalNodletCap !== globalNodletCap || this._lastNodletCount !== this.nodlets.count) {
+            for (let i = 0; i < this.nodlets.count; i++) {
+                this.nodlets.maxDataCapacity[i] = globalNodletCap;
+            }
+            this._lastGlobalNodletCap = globalNodletCap;
+            this._lastNodletCount = this.nodlets.count;
         }
 
         // Nodlet AI
