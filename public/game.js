@@ -55,6 +55,10 @@ class CanvasGame {
         // Pre-allocated array for retrieving neighbors without closure allocations
         this.tempNeighbors = new Int32Array(this.resources.maxResources);
 
+        // Performance tracking for upgrades
+        this._lastGlobalNodletCap = -1;
+        this._lastNodletCount = 0;
+
         // DOM Element Cache
         this.ui = {};
 
@@ -487,6 +491,16 @@ class CanvasGame {
             }
         }
 
+        // ⚡ Bolt Optimization: Avoid redundant per-frame writes to TypedArrays for global upgrades.
+        // Only update the entire nodlet array when the global cap actually changes or when nodlets are spawned/despawned.
+        if (this._lastGlobalNodletCap !== globalNodletCap || this._lastNodletCount !== this.nodlets.count) {
+            for (let i = 0; i < this.nodlets.count; i++) {
+                this.nodlets.maxDataCapacity[i] = globalNodletCap;
+            }
+            this._lastGlobalNodletCap = globalNodletCap;
+            this._lastNodletCount = this.nodlets.count;
+        }
+
         // Nodlet AI
         const MAX_WANDER_SPEED = 50 * this.upgrades.perks.nodletSpeedMult;
         const MAX_RETURN_SPEED = 100 * this.upgrades.perks.nodletSpeedMult;
@@ -516,9 +530,6 @@ class CanvasGame {
         const orbitSpeed = 150 * deltaTime * this.upgrades.perks.nodletSpeedMult;
 
         for (let i = 0; i < this.nodlets.count; i++) {
-            // Force capacity update immediately from tree
-            this.nodlets.maxDataCapacity[i] = globalNodletCap;
-
             const cx = this.nodlets.posX[i];
             const cy = this.nodlets.posY[i];
             const state = this.nodlets.state[i];
