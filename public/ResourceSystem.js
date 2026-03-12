@@ -93,13 +93,13 @@ export class ResourceSystem {
      * Returns the number of neighbors found to avoid modifying array length.
      */
     getNeighbors(x, y, radius, outArray) {
-        let count = 0;
-        if (!this.grid) return count;
+        if (!this.grid) return 0;
         const x1 = Math.floor((x - radius) / this.cellSize);
         const x2 = Math.floor((x + radius) / this.cellSize);
         const y1 = Math.floor((y - radius) / this.cellSize);
         const y2 = Math.floor((y + radius) / this.cellSize);
         const r2 = radius * radius;
+        let count = 0;
 
         for (let gy = y1; gy <= y2; gy++) {
             if (gy < 0 || gy >= this.gridRows) continue;
@@ -140,8 +140,7 @@ export class ResourceSystem {
                 // If it reached the destination (arbitrary small radius 100)
                 if (distSq < 100) {
                     // Find the destination server to add data to it (if it has capacity)
-                    let neighborCount = this.getNeighbors(this.posX[i], this.posY[i], 50, this._queryResults);
-
+                    const neighborCount = this.getNeighbors(this.posX[i], this.posY[i], 50, this._queryResults);
                     for (let k = 0; k < neighborCount; k++) {
                         const neighborIdx = this._queryResults[k];
                         if (this.type[neighborIdx] === 0 || this.type[neighborIdx] === 1) {
