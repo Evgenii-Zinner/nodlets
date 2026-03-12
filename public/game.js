@@ -44,15 +44,16 @@ class CanvasGame {
         this.upgrades = new UpgradeSystem();
 
         // Pre-allocated arrays for spawn packets to avoid GC overhead
-        this.generatorIndices = [];
-        this.relayIndices = [];
-        this.allServers = [];
+        this.generatorIndices = new Int32Array(this.resources.maxResources);
+        this.relayIndices = new Int32Array(this.resources.maxResources);
+        this.allServers = new Int32Array(this.resources.maxResources);
 
         // Pre-allocated array of arrays for spatial grid optimization
-        this.hubTargets = Array.from({ length: this.hubs.maxHubs }, () => []);
+        this.hubTargets = Array.from({ length: this.hubs.maxHubs }, () => new Int32Array(this.resources.maxResources));
+        this.hubTargetsCount = new Int32Array(this.hubs.maxHubs);
 
         // Pre-allocated array for retrieving neighbors without closure allocations
-        this.tempNeighbors = [];
+        this.tempNeighbors = new Int32Array(this.resources.maxResources);
 
         // DOM Element Cache
         this.ui = {};
@@ -342,9 +343,8 @@ class CanvasGame {
         let minDistServer = 60 / this.camera.zoom; // Servers are larger
 
         // Check Servers first
-        this.tempNeighbors.length = 0;
-        this.resources.getNeighbors(worldPos.x, worldPos.y, 100, this.tempNeighbors);
-        for (let i = 0; i < this.tempNeighbors.length; i++) {
+        const neighborCount = this.resources.getNeighbors(worldPos.x, worldPos.y, 100, this.tempNeighbors);
+        for (let i = 0; i < neighborCount; i++) {
             const idx = this.tempNeighbors[i];
             if (this.resources.type[idx] !== 0 && this.resources.type[idx] !== 1) continue; // Only click generators or relays
             const dx = this.resources.posX[idx] - worldPos.x;
@@ -397,27 +397,27 @@ class CanvasGame {
         }
 
         // Spawn Packets periodically
-        this.generatorIndices.length = 0;
-        this.relayIndices.length = 0;
-        this.allServers.length = 0;
+        let genCount = 0;
+        let relayCount = 0;
+        let allCount = 0;
 
         for (let i = 0; i < this.resources.count; i++) {
             if (this.resources.amount[i] > 50) {
                 if (this.resources.type[i] === 0) {
-                    this.generatorIndices.push(i);
-                    this.allServers.push(i);
+                    this.generatorIndices[genCount++] = i;
+                    this.allServers[allCount++] = i;
                 } else if (this.resources.type[i] === 1) {
-                    this.relayIndices.push(i);
-                    this.allServers.push(i);
+                    this.relayIndices[relayCount++] = i;
+                    this.allServers[allCount++] = i;
                 }
             }
         }
 
         // Generators emit rarely (2% chance per frame)
-        if (this.generatorIndices.length > 0 && Math.random() < 0.1) {
-            const s1 = this.generatorIndices[Math.floor(Math.random() * this.generatorIndices.length)];
+        if (genCount > 0 && Math.random() < 0.1) {
+            const s1 = this.generatorIndices[Math.floor(Math.random() * genCount)];
             // Pick a random target (any server)
-            let s2 = this.allServers[Math.floor(Math.random() * this.allServers.length)];
+            let s2 = this.allServers[Math.floor(Math.random() * allCount)];
 
             if (s1 !== s2) {
                 const chunk = 20 + Math.random() * 30;
@@ -431,10 +431,10 @@ class CanvasGame {
         }
 
         // Relays emit frequently (15% chance per frame)
-        if (this.relayIndices.length > 0 && Math.random() < 0.25) {
-            const s1 = this.relayIndices[Math.floor(Math.random() * this.relayIndices.length)];
+        if (relayCount > 0 && Math.random() < 0.25) {
+            const s1 = this.relayIndices[Math.floor(Math.random() * relayCount)];
             // Pick a random target (any server)
-            let s2 = this.allServers[Math.floor(Math.random() * this.allServers.length)];
+            let s2 = this.allServers[Math.floor(Math.random() * allCount)];
 
             if (s1 !== s2) {
                 const chunk = 20 + Math.random() * 30;
@@ -500,16 +500,16 @@ class CanvasGame {
 
             // Reuse pre-allocated arrays to avoid GC pressure
             const targets = this.hubTargets[h];
-            targets.length = 0;
+            let targetCount = 0;
 
-            this.tempNeighbors.length = 0;
-            this.resources.getNeighbors(hx, hy, currentInfluence, this.tempNeighbors);
-            for (let i = 0; i < this.tempNeighbors.length; i++) {
+            const neighborCount = this.resources.getNeighbors(hx, hy, currentInfluence, this.tempNeighbors);
+            for (let i = 0; i < neighborCount; i++) {
                 const r = this.tempNeighbors[i];
                 if (this.resources.type[r] === 0 || this.resources.type[r] === 1) {
-                    targets.push(r);
+                    targets[targetCount++] = r;
                 }
             }
+            this.hubTargetsCount[h] = targetCount;
         }
 
         const force = 60 * deltaTime * this.upgrades.perks.nodletSpeedMult;
@@ -537,9 +537,8 @@ class CanvasGame {
 
                 // 1. Always check for Packet Collisions first
                 let packetCaught = false;
-                this.tempNeighbors.length = 0;
-                this.resources.getNeighbors(cx, cy, 30, this.tempNeighbors);
-                for (let k = 0; k < this.tempNeighbors.length; k++) {
+                const neighborCount = this.resources.getNeighbors(cx, cy, 30, this.tempNeighbors);
+                for (let k = 0; k < neighborCount; k++) {
                     const resIdx = this.tempNeighbors[k];
                     if (this.resources.type[resIdx] === 2 && !packetCaught) { // Packet collision
                         const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
@@ -571,9 +570,10 @@ class CanvasGame {
                 // If no valid global target, pick a random server in range
                 if (targetId === -1) {
                     const potentialTargets = this.hubTargets[hubIdx];
-                    if (potentialTargets && potentialTargets.length > 0) {
+                    const count = this.hubTargetsCount[hubIdx];
+                    if (count > 0) {
                         // Pick random valid server
-                        targetId = potentialTargets[Math.floor(Math.random() * potentialTargets.length)];
+                        targetId = potentialTargets[Math.floor(Math.random() * count)];
                     }
                 }
 

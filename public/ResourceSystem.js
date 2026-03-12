@@ -29,7 +29,7 @@ export class ResourceSystem {
         this.dirtyGrid = true;
 
         // Pre-allocated array for internal queries to avoid GC
-        this._queryResults = [];
+        this._queryResults = new Int32Array(maxResources);
     }
 
     initGrid(worldWidth, worldHeight) {
@@ -92,12 +92,13 @@ export class ResourceSystem {
      * ⚡ Bolt Optimization: Avoids closure allocations by mutating a passed array.
      */
     getNeighbors(x, y, radius, outArray) {
-        if (!this.grid) return;
+        if (!this.grid) return 0;
         const x1 = Math.floor((x - radius) / this.cellSize);
         const x2 = Math.floor((x + radius) / this.cellSize);
         const y1 = Math.floor((y - radius) / this.cellSize);
         const y2 = Math.floor((y + radius) / this.cellSize);
         const r2 = radius * radius;
+        let count = 0;
 
         for (let gy = y1; gy <= y2; gy++) {
             if (gy < 0 || gy >= this.gridRows) continue;
@@ -109,13 +110,14 @@ export class ResourceSystem {
                         const dx = this.posX[idx] - x;
                         const dy = this.posY[idx] - y;
                         if (dx * dx + dy * dy <= r2) {
-                            outArray.push(idx);
+                            outArray[count++] = idx;
                         }
                     }
                     idx = this.nextInCell[idx];
                 }
             }
         }
+        return count;
     }
 
     update(deltaTime, world) {
@@ -137,10 +139,9 @@ export class ResourceSystem {
                 // If it reached the destination (arbitrary small radius 100)
                 if (distSq < 100) {
                     // Find the destination server to add data to it (if it has capacity)
-                    this._queryResults.length = 0;
-                    this.getNeighbors(this.posX[i], this.posY[i], 50, this._queryResults);
+                    const neighborCount = this.getNeighbors(this.posX[i], this.posY[i], 50, this._queryResults);
 
-                    for (let k = 0; k < this._queryResults.length; k++) {
+                    for (let k = 0; k < neighborCount; k++) {
                         const neighborIdx = this._queryResults[k];
                         if (this.type[neighborIdx] === 0 || this.type[neighborIdx] === 1) {
                             if (this.amount[neighborIdx] < this.maxAmount[neighborIdx]) {
