@@ -59,6 +59,7 @@ class CanvasGame {
         this._lastGlobalNodletCap = -1;
         this._lastNodletCount = 0;
 
+
         // DOM Element Cache
         this.ui = {};
 
@@ -348,6 +349,7 @@ class CanvasGame {
 
         // Check Servers first
         const neighborCount = this.resources.getNeighbors(worldPos.x, worldPos.y, 100, this.tempNeighbors);
+
         for (let i = 0; i < neighborCount; i++) {
             const idx = this.tempNeighbors[i];
             if (this.resources.type[idx] !== 0 && this.resources.type[idx] !== 1) continue; // Only click generators or relays
@@ -518,6 +520,7 @@ class CanvasGame {
 
             const neighborCount = this.resources.getNeighbors(hx, hy, currentInfluence, this.tempNeighbors);
             for (let i = 0; i < neighborCount; i++) {
+
                 const r = this.tempNeighbors[i];
                 if (this.resources.type[r] === 0 || this.resources.type[r] === 1) {
                     targets[targetCount++] = r;
@@ -548,8 +551,10 @@ class CanvasGame {
 
                 // 1. Always check for Packet Collisions first
                 let packetCaught = false;
+
                 const neighborCount = this.resources.getNeighbors(cx, cy, 30, this.tempNeighbors);
                 for (let k = 0; k < neighborCount; k++) {
+
                     const resIdx = this.tempNeighbors[k];
                     if (this.resources.type[resIdx] === 2 && !packetCaught) { // Packet collision
                         const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);

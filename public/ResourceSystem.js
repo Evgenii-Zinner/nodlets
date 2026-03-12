@@ -89,7 +89,8 @@ export class ResourceSystem {
 
     /**
      * Finds all resources within `radius` of `x, y` and appends their indices to `outArray`.
-     * ⚡ Bolt Optimization: Avoids closure allocations by mutating a passed array.
+     * ⚡ Bolt Optimization: Avoids closure allocations by populating a passed Int32Array by index.
+     * Returns the number of neighbors found to avoid modifying array length.
      */
     getNeighbors(x, y, radius, outArray) {
         if (!this.grid) return 0;
@@ -140,7 +141,6 @@ export class ResourceSystem {
                 if (distSq < 100) {
                     // Find the destination server to add data to it (if it has capacity)
                     const neighborCount = this.getNeighbors(this.posX[i], this.posY[i], 50, this._queryResults);
-
                     for (let k = 0; k < neighborCount; k++) {
                         const neighborIdx = this._queryResults[k];
                         if (this.type[neighborIdx] === 0 || this.type[neighborIdx] === 1) {
