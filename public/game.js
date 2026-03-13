@@ -507,6 +507,14 @@ class CanvasGame {
         const MAX_WANDER_SPEED = 50 * this.upgrades.perks.nodletSpeedMult;
         const MAX_RETURN_SPEED = 100 * this.upgrades.perks.nodletSpeedMult;
 
+        // ⚡ Bolt Optimization: Track active packets. If 0, we can skip O(Nodlets) spatial grid lookups for packet collisions.
+        let activePacketCount = 0;
+        for (let j = 0; j < this.resources.count; j++) {
+            if (this.resources.type[j] === 2) {
+                activePacketCount++;
+            }
+        }
+
         // Optimization: Pre-calculate valid targets for each Hub using Spatial Grid to avoid O(Hubs * Resources) lookup
         // This turns a 200,000 iteration frame (100 hubs * 2k resources) into a fast spatial lookup.
 
@@ -552,15 +560,18 @@ class CanvasGame {
                 // 1. Always check for Packet Collisions first
                 let packetCaught = false;
 
-                const neighborCount = this.resources.getNeighbors(cx, cy, 30, this.tempNeighbors);
-                for (let k = 0; k < neighborCount; k++) {
+                if (activePacketCount > 0) {
+                    const neighborCount = this.resources.getNeighbors(cx, cy, 30, this.tempNeighbors);
+                    for (let k = 0; k < neighborCount; k++) {
 
-                    const resIdx = this.tempNeighbors[k];
-                    if (this.resources.type[resIdx] === 2 && !packetCaught) { // Packet collision
-                        const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
-                        this.nodlets.carriedData[i] += take;
-                        this.resources.despawn(resIdx);
-                        packetCaught = true;
+                        const resIdx = this.tempNeighbors[k];
+                        if (this.resources.type[resIdx] === 2 && !packetCaught) { // Packet collision
+                            const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
+                            this.nodlets.carriedData[i] += take;
+                            this.resources.despawn(resIdx);
+                            packetCaught = true;
+                            activePacketCount--; // Optimization: reduce count so we don't look for more if we caught them all
+                        }
                     }
                 }
 
