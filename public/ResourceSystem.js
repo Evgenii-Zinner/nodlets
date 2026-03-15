@@ -28,6 +28,9 @@ export class ResourceSystem {
         this.nextInCell = new Int32Array(maxResources);
         this.dirtyGrid = true;
 
+        // Tracks number of active packets for early-exit optimizations
+        this.activePacketCount = 0;
+
         // Pre-allocated array for internal queries to avoid GC
         this._queryResults = new Int32Array(maxResources);
     }
@@ -82,6 +85,8 @@ export class ResourceSystem {
         this.targetX[idx] = endX;
         this.targetY[idx] = endY;
         this.speed[idx] = 250 + Math.random() * 100; // Packets are fast
+
+        this.activePacketCount++;
 
         this.dirtyGrid = true;
         return idx;
@@ -177,6 +182,10 @@ export class ResourceSystem {
 
     despawn(idx) {
         if (idx < 0 || idx >= this.count) return;
+
+        if (this.type[idx] === 2) {
+            this.activePacketCount--;
+        }
 
         // Swap with last
         const lastIdx = this.count - 1;
