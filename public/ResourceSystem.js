@@ -28,9 +28,6 @@ export class ResourceSystem {
         this.nextInCell = new Int32Array(maxResources);
         this.dirtyGrid = true;
 
-        // Track active packets to optimize spatial queries (Bolt optimization)
-        this.activePacketCount = 0;
-
         // Pre-allocated array for internal queries to avoid GC
         this._queryResults = new Int32Array(maxResources);
     }
@@ -86,7 +83,6 @@ export class ResourceSystem {
         this.targetY[idx] = endY;
         this.speed[idx] = 250 + Math.random() * 100; // Packets are fast
 
-        this.activePacketCount++;
         this.dirtyGrid = true;
         return idx;
     }
@@ -181,10 +177,6 @@ export class ResourceSystem {
 
     despawn(idx) {
         if (idx < 0 || idx >= this.count) return;
-
-        if (this.type[idx] === 2) {
-            this.activePacketCount--;
-        }
 
         // Swap with last
         const lastIdx = this.count - 1;

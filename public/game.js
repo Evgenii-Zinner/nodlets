@@ -552,17 +552,15 @@ class CanvasGame {
                 // 1. Always check for Packet Collisions first
                 let packetCaught = false;
 
-                if (this.resources.activePacketCount > 0) {
-                    const neighborCount = this.resources.getNeighbors(cx, cy, 30, this.tempNeighbors);
-                    for (let k = 0; k < neighborCount; k++) {
+                const neighborCount = this.resources.getNeighbors(cx, cy, 30, this.tempNeighbors);
+                for (let k = 0; k < neighborCount; k++) {
 
-                        const resIdx = this.tempNeighbors[k];
-                        if (this.resources.type[resIdx] === 2 && !packetCaught) { // Packet collision
-                            const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
-                            this.nodlets.carriedData[i] += take;
-                            this.resources.despawn(resIdx);
-                            packetCaught = true;
-                        }
+                    const resIdx = this.tempNeighbors[k];
+                    if (this.resources.type[resIdx] === 2 && !packetCaught) { // Packet collision
+                        const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
+                        this.nodlets.carriedData[i] += take;
+                        this.resources.despawn(resIdx);
+                        packetCaught = true;
                     }
                 }
 
@@ -680,15 +678,14 @@ class CanvasGame {
                 } else {
                     const dist = Math.sqrt(distSq);
 
-                    // Desired velocity pointing directly at the hub
-                    const targetVx = (dx / dist) * MAX_RETURN_SPEED;
-                    const targetVy = (dy / dist) * MAX_RETURN_SPEED;
+                    // Optimized: Hoist complex mathematical calculations and avoid redundant operations
+                    const speedOverDist = MAX_RETURN_SPEED / dist;
+                    const targetVx = dx * speedOverDist;
+                    const targetVy = dy * speedOverDist;
 
-                    // Interpolate current velocity towards target velocity
-                    // This naturally smooths the curve and kills orbital momentum
-                    const turnSpeed = 4.0; // Higher = tighter turns
-                    this.nodlets.velX[i] += (targetVx - this.nodlets.velX[i]) * turnSpeed * deltaTime;
-                    this.nodlets.velY[i] += (targetVy - this.nodlets.velY[i]) * turnSpeed * deltaTime;
+                    const turnSpeedDelta = 4.0 * deltaTime;
+                    this.nodlets.velX[i] += (targetVx - this.nodlets.velX[i]) * turnSpeedDelta;
+                    this.nodlets.velY[i] += (targetVy - this.nodlets.velY[i]) * turnSpeedDelta;
                 }
             }
 

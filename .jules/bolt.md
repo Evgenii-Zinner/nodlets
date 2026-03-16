@@ -61,3 +61,6 @@
 ## 2026-03-09 - High-Frequency DOM Lookups
 **Learning:** Using `document.getElementById` repeatedly inside recurring update loops (like the `update` loop in `game.js`) causes unnecessary overhead by crossing the JS/C++ boundary every time. In benchmarks, repeated lookup calls took over twice as much time as accessing a cached reference (74ms vs 32ms for 1000 iterations).
 **Action:** Always pre-cache DOM elements in high-frequency update logic into an object/class property (like `this.ui`) upon initialization to turn O(N) DOM lookups into O(1) JavaScript property accesses.
+## 2026-03-09 - packet collision optimization check
+**Learning:** Checking for active packets > 0 is not a useful optimization in this game because 30 generators are constantly generating packets from the first frame. There is no situation where the packet count is zero.
+**Action:** Do not try to implement `activePacketCount` optimization again for packets.
