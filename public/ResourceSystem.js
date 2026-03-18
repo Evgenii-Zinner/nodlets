@@ -160,8 +160,10 @@ export class ResourceSystem {
 
                 // Move towards target
                 const dist = Math.sqrt(distSq);
-                const vx = (dx / dist) * this.speed[i];
-                const vy = (dy / dist) * this.speed[i];
+                // ⚡ Bolt Optimization: Hoist division to single multiplication factor
+                const speedOverDist = this.speed[i] / dist;
+                const vx = dx * speedOverDist;
+                const vy = dy * speedOverDist;
 
                 this.posX[i] += vx * deltaTime;
                 this.posY[i] += vy * deltaTime;

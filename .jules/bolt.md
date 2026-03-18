@@ -61,3 +61,7 @@
 ## 2026-03-09 - High-Frequency DOM Lookups
 **Learning:** Using `document.getElementById` repeatedly inside recurring update loops (like the `update` loop in `game.js`) causes unnecessary overhead by crossing the JS/C++ boundary every time. In benchmarks, repeated lookup calls took over twice as much time as accessing a cached reference (74ms vs 32ms for 1000 iterations).
 **Action:** Always pre-cache DOM elements in high-frequency update logic into an object/class property (like `this.ui`) upon initialization to turn O(N) DOM lookups into O(1) JavaScript property accesses.
+
+## 2024-03-18 - [Optimization of Division over Division in Hot Loops]
+**Learning:** Division by Euclidean distance in hot loops (like nodlet and packet velocities) can be effectively optimized by computing the reciprocal of the distance once and using it as a multiplication factor (`(dx / dist) * force` -> `const forceOverDist = force / dist; dx * forceOverDist`). This avoids redundant divisions on the X and Y axes and significantly reduces CPU overhead when processed across thousands of entities in typed arrays. This yields a measurable performance boost with zero functional change.
+**Action:** Always scan for redundant mathematical operations within high-frequency loops (especially those scaling with N > 5,000 entities) and hoist them when they apply equally to multiple dimensions or axes.

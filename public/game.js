@@ -606,8 +606,10 @@ class CanvasGame {
                         // Fly towards target
                         this.nodlets.state[i] = 0; // Seeking
                         const dist = Math.sqrt(distSq);
-                        this.nodlets.velX[i] += (dx / dist) * force;
-                        this.nodlets.velY[i] += (dy / dist) * force;
+                        // ⚡ Bolt Optimization: Hoist division to single multiplication factor
+                        const forceOverDist = force / dist;
+                        this.nodlets.velX[i] += dx * forceOverDist;
+                        this.nodlets.velY[i] += dy * forceOverDist;
                     } else {
                         // Orbiting
                         this.nodlets.state[i] = 2; // Orbiting
@@ -620,12 +622,15 @@ class CanvasGame {
 
                         // Pull towards the exact orbit radius
                         const pullFactor = (dist - orbitRadius) * 0.1;
-                        const pullX = (dx / dist) * pullFactor;
-                        const pullY = (dy / dist) * pullFactor;
+                        // ⚡ Bolt Optimization: Hoist division to single multiplication factors
+                        const pullOverDist = pullFactor / dist;
+                        const pullX = dx * pullOverDist;
+                        const pullY = dy * pullOverDist;
 
                         // Orbit speed (significantly faster as requested)
-                        const tangentX = (pX / dist) * orbitSpeed;
-                        const tangentY = (pY / dist) * orbitSpeed;
+                        const orbitOverDist = orbitSpeed / dist;
+                        const tangentX = pX * orbitOverDist;
+                        const tangentY = pY * orbitOverDist;
 
                         this.nodlets.velX[i] += tangentX + pullX;
                         this.nodlets.velY[i] += tangentY + pullY;
@@ -679,8 +684,10 @@ class CanvasGame {
                     const dist = Math.sqrt(distSq);
 
                     // Desired velocity pointing directly at the hub
-                    const targetVx = (dx / dist) * MAX_RETURN_SPEED;
-                    const targetVy = (dy / dist) * MAX_RETURN_SPEED;
+                    // ⚡ Bolt Optimization: Hoist division to single multiplication factor
+                    const returnOverDist = MAX_RETURN_SPEED / dist;
+                    const targetVx = dx * returnOverDist;
+                    const targetVy = dy * returnOverDist;
 
                     // Interpolate current velocity towards target velocity
                     // This naturally smooths the curve and kills orbital momentum
@@ -698,8 +705,10 @@ class CanvasGame {
             if (distToHubSq > currentInfluence * currentInfluence) {
                 const distToHub = Math.sqrt(distToHubSq);
                 // Clamp position to exactly the radius
-                this.nodlets.posX[i] = hx + (dxToHub / distToHub) * currentInfluence;
-                this.nodlets.posY[i] = hy + (dyToHub / distToHub) * currentInfluence;
+                // ⚡ Bolt Optimization: Hoist division to single multiplication factor
+                const influenceOverDist = currentInfluence / distToHub;
+                this.nodlets.posX[i] = hx + dxToHub * influenceOverDist;
+                this.nodlets.posY[i] = hy + dyToHub * influenceOverDist;
 
                 // Bounce velocities to prevent getting stuck pushing against the wall
                 this.nodlets.velX[i] *= -0.8;
