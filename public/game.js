@@ -543,15 +543,18 @@ class CanvasGame {
                 // 1. Always check for Packet Collisions first
                 let packetCaught = false;
 
-                const neighborCount = this.resources.getNeighbors(cx, cy, 30, this.tempNeighbors);
-                for (let k = 0; k < neighborCount; k++) {
+                // ⚡ Bolt Optimization: Skip expensive spatial grid lookup if no packets exist
+                if (this.resources.activePacketCount > 0) {
+                    const neighborCount = this.resources.getNeighbors(cx, cy, 30, this.tempNeighbors);
+                    for (let k = 0; k < neighborCount; k++) {
 
-                    const resIdx = this.tempNeighbors[k];
-                    if (this.resources.type[resIdx] === 2 && !packetCaught) { // Packet collision
-                        const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
-                        this.nodlets.carriedData[i] += take;
-                        this.resources.despawn(resIdx);
-                        packetCaught = true;
+                        const resIdx = this.tempNeighbors[k];
+                        if (this.resources.type[resIdx] === 2 && !packetCaught) { // Packet collision
+                            const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
+                            this.nodlets.carriedData[i] += take;
+                            this.resources.despawn(resIdx);
+                            packetCaught = true;
+                        }
                     }
                 }
 
