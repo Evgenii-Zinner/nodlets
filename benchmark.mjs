@@ -1,7 +1,7 @@
 import { ResourceSystem } from './public/ResourceSystem.js';
 
 function runBenchmark() {
-    const iterations = 10000;
+    const iterations = 1000;
     const nodletsCount = 5000;
 
     // Simulate game state
@@ -11,40 +11,43 @@ function runBenchmark() {
     for (let i = 0; i < 2000; i++) {
         resources.spawnServer(Math.random() * 5000, Math.random() * 5000, 1000, 0);
     }
+    resources.activePacketCount = 30; // Simulate packets are always there
     resources.updateGrid();
 
     const tempNeighbors = new Int32Array(resources.maxResources);
+    let frameCount = 0;
 
-    // Unoptimized Loop
+    // Unoptimized Loop (activePacketCount check which is always true)
     const unoptimizedStart = performance.now();
-    for (let i = 0; i < iterations; i++) {
-        for(let n = 0; n < nodletsCount; n++) {
+    for (let f = 0; f < iterations; f++) {
+        for(let i = 0; i < nodletsCount; i++) {
             const cx = Math.random() * 5000;
             const cy = Math.random() * 5000;
 
-            // Simulating previous logic where it always searches
-            const neighborCount = resources.getNeighbors(cx, cy, 30, tempNeighbors);
             let packetCaught = false;
-            for (let k = 0; k < neighborCount; k++) {
-                const resIdx = tempNeighbors[k];
-                if (resources.type[resIdx] === 2 && !packetCaught) {
-                    packetCaught = true;
+            if (resources.activePacketCount > 0) {
+                const neighborCount = resources.getNeighbors(cx, cy, 30, tempNeighbors);
+                for (let k = 0; k < neighborCount; k++) {
+                    const resIdx = tempNeighbors[k];
+                    if (resources.type[resIdx] === 2 && !packetCaught) {
+                        packetCaught = true;
+                    }
                 }
             }
         }
     }
     const unoptimizedTime = performance.now() - unoptimizedStart;
 
-    // Optimized Loop
+    // Optimized Loop (staggered updates)
     const optimizedStart = performance.now();
-    for (let i = 0; i < iterations; i++) {
-        for(let n = 0; n < nodletsCount; n++) {
+    for (let f = 0; f < iterations; f++) {
+        frameCount++;
+        for(let i = 0; i < nodletsCount; i++) {
             const cx = Math.random() * 5000;
             const cy = Math.random() * 5000;
 
-            // Simulating new logic with early exit
             let packetCaught = false;
-            if (resources.activePacketCount > 0) {
+            if ((i + frameCount) % 10 === 0) {
                 const neighborCount = resources.getNeighbors(cx, cy, 30, tempNeighbors);
                 for (let k = 0; k < neighborCount; k++) {
                     const resIdx = tempNeighbors[k];

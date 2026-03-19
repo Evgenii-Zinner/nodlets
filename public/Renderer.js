@@ -272,10 +272,13 @@ export class Renderer {
 
                 const body = root._body;
                 const scale = hubs.size[i] / 20.0;
-                body.scale.set(scale);
+                if (body.scale.x !== scale) {
+                    body.scale.set(scale);
+                }
 
                 const colorInt = hubs.color[i];
-                body.tint = (colorInt >> 8) & 0xFFFFFF;
+                const newTint = (colorInt >> 8) & 0xFFFFFF;
+                if (body.tint !== newTint) body.tint = newTint;
             } else {
                 root.visible = false;
             }
@@ -372,11 +375,14 @@ export class Renderer {
                     targetHeight *= globalPulse;
                 }
 
-                body.width = targetWidth;
-                body.height = targetHeight;
+                if (body.width !== targetWidth || body.height !== targetHeight) {
+                    body.width = targetWidth;
+                    body.height = targetHeight;
+                }
 
                 const colorInt = nodlets.color[i];
-                body.tint = (colorInt >> 8) & 0xFFFFFF;
+                const newTint = (colorInt >> 8) & 0xFFFFFF;
+                if (body.tint !== newTint) body.tint = newTint;
 
                 if (camera.zoom > 0.5) {
                     bars.visible = true;

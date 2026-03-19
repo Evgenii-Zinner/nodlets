@@ -37,6 +37,7 @@ class CanvasGame {
         this.lastFrameTime = performance.now();
         this.updateAccumulator = 0;
         this.fixedTimeStep = 1 / 60;
+        this.frameCount = 0;
         this.selectedNodletIndex = -1;
         this.selectedServerIndex = -1;
         this.activeTargetServer = -1; // Global Target
@@ -384,6 +385,8 @@ class CanvasGame {
     }
 
     update(deltaTime) {
+        this.frameCount++;
+
         // Upgrade button logic
         if (this.ui.upgradeBtn) {
             if (this.upgrades.availablePoints > 0) {
