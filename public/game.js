@@ -398,12 +398,19 @@ class CanvasGame {
         let relayCount = 0;
         let allCount = 0;
 
-        for (let i = 0; i < this.resources.count; i++) {
-            if (this.resources.amount[i] > 50) {
-                if (this.resources.type[i] === 0) {
+        // ⚡ Bolt Optimization: Cache TypedArray references to avoid repeatedly crossing
+        // `this.resources` property boundary in a hot loop that scans thousands of entities.
+        const resCount = this.resources.count;
+        const resAmount = this.resources.amount;
+        const resType = this.resources.type;
+
+        for (let i = 0; i < resCount; i++) {
+            if (resAmount[i] > 50) {
+                const type = resType[i];
+                if (type === 0) {
                     this.generatorIndices[genCount++] = i;
                     this.allServers[allCount++] = i;
-                } else if (this.resources.type[i] === 1) {
+                } else if (type === 1) {
                     this.relayIndices[relayCount++] = i;
                     this.allServers[allCount++] = i;
                 }
