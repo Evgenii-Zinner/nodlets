@@ -69,3 +69,7 @@
 ## 2026-04-12 - Avoiding Redundant PIXI Transform Cache Invalidations
 **Learning:** Re-assigning constant visual properties (like PIXI Sprite `tint` and `scale`) inside a 10,000-entity loop every frame introduces significant overhead. Mutating dimensions like `width` and `height` without checking if they have changed forces unnecessary PIXI transform cache invalidations.
 **Action:** Always check if visual properties (`width`, `height`, `tint`, `scale`) have actually changed before mutating PIXI sprites in hot loops. This avoids redundant geometry and transform updates, resulting in a ~34% performance gain in the rendering loop.
+
+## 2024-03-21 - TypedArray Property Access Hoisting
+**Learning:** In high-frequency loops (e.g., thousands of entities checking 60+ times a second), accessing properties of objects that contain TypedArrays (`this.nodlets.posX[i]`) incurs significant V8 property-lookup overhead compared to accessing local variables (`n_posX[i]`). Destructuring or assigning these deeply nested properties to local variables right before the loop yields >30% performance boost.
+**Action:** When iterating over Data-Oriented structures (ECS style with TypedArrays) in hot paths, always hoist the array references outside the loop.

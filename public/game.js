@@ -523,20 +523,43 @@ class CanvasGame {
         const force = 60 * deltaTime * this.upgrades.perks.nodletSpeedMult;
         const orbitSpeed = 150 * deltaTime * this.upgrades.perks.nodletSpeedMult;
 
-        for (let i = 0; i < this.nodlets.count; i++) {
-            const cx = this.nodlets.posX[i];
-            const cy = this.nodlets.posY[i];
-            const state = this.nodlets.state[i];
-            const carriedData = this.nodlets.carriedData[i];
-            const maxCarry = this.nodlets.maxDataCapacity[i];
-            const hubIdx = this.nodlets.hubId[i];
+        // ⚡ Bolt Optimization: Cache frequently accessed TypedArrays to local variables to avoid O(N) property lookups
+        const n_posX = this.nodlets.posX;
+        const n_posY = this.nodlets.posY;
+        const n_velX = this.nodlets.velX;
+        const n_velY = this.nodlets.velY;
+        const n_state = this.nodlets.state;
+        const n_carriedData = this.nodlets.carriedData;
+        const n_maxDataCapacity = this.nodlets.maxDataCapacity;
+        const n_hubId = this.nodlets.hubId;
+        const n_orbitRadius = this.nodlets.orbitRadius;
+        const n_orbitDirection = this.nodlets.orbitDirection;
+        const n_wanderAngle = this.nodlets.wanderAngle;
+        const n_wanderTimer = this.nodlets.wanderTimer;
 
-            const hx = this.hubs.posX[hubIdx];
-            const hy = this.hubs.posY[hubIdx];
+        const h_posX = this.hubs.posX;
+        const h_posY = this.hubs.posY;
+        const h_size = this.hubs.size;
+
+        const r_type = this.resources.type;
+        const r_amount = this.resources.amount;
+        const r_posX = this.resources.posX;
+        const r_posY = this.resources.posY;
+
+        for (let i = 0; i < this.nodlets.count; i++) {
+            const cx = n_posX[i];
+            const cy = n_posY[i];
+            const state = n_state[i];
+            const carriedData = n_carriedData[i];
+            const maxCarry = n_maxDataCapacity[i];
+            const hubIdx = n_hubId[i];
+
+            const hx = h_posX[hubIdx];
+            const hy = h_posY[hubIdx];
 
             if (state === 0 || state === 2) { // Seeking or Orbiting Target Server
                 if (carriedData >= maxCarry) {
-                    this.nodlets.state[i] = 1; // Full, go home
+                    n_state[i] = 1; // Full, go home
                     continue;
                 }
 
@@ -549,17 +572,17 @@ class CanvasGame {
                     for (let k = 0; k < neighborCount; k++) {
 
                         const resIdx = this.tempNeighbors[k];
-                        if (this.resources.type[resIdx] === 2 && !packetCaught) { // Packet collision
-                            const take = Math.min(this.resources.amount[resIdx], maxCarry - this.nodlets.carriedData[i]);
-                            this.nodlets.carriedData[i] += take;
+                        if (r_type[resIdx] === 2 && !packetCaught) { // Packet collision
+                            const take = Math.min(r_amount[resIdx], maxCarry - n_carriedData[i]);
+                            n_carriedData[i] += take;
                             this.resources.despawn(resIdx);
                             packetCaught = true;
                         }
                     }
                 }
 
-                if (this.nodlets.carriedData[i] >= maxCarry) {
-                    this.nodlets.state[i] = 1;
+                if (n_carriedData[i] >= maxCarry) {
+                    n_state[i] = 1;
                     continue;
                 }
 
@@ -568,8 +591,8 @@ class CanvasGame {
 
                 // Validate Target Server (exists and is within influence)
                 if (targetId !== -1) {
-                    const tx = this.resources.posX[targetId];
-                    const ty = this.resources.posY[targetId];
+                    const tx = r_posX[targetId];
+                    const ty = r_posY[targetId];
                     const dxToHub = tx - hx;
                     const dyToHub = ty - hy;
                     if (dxToHub * dxToHub + dyToHub * dyToHub > currentInfluence * currentInfluence) {
@@ -588,28 +611,28 @@ class CanvasGame {
                 }
 
                 if (targetId !== -1) {
-                    const tx = this.resources.posX[targetId];
-                    const ty = this.resources.posY[targetId];
+                    const tx = r_posX[targetId];
+                    const ty = r_posY[targetId];
                     const dx = tx - cx;
                     const dy = ty - cy;
                     const distSq = dx * dx + dy * dy;
 
-                    const orbitRadius = this.nodlets.orbitRadius[i];
+                    const orbitRadius = n_orbitRadius[i];
 
                     if (distSq > orbitRadius * orbitRadius * 1.5) {
                         // Fly towards target
-                        this.nodlets.state[i] = 0; // Seeking
+                        n_state[i] = 0; // Seeking
                         const dist = Math.sqrt(distSq);
                         // ⚡ Bolt Optimization: Hoist division to single multiplication factor
                         const forceOverDist = force / dist;
-                        this.nodlets.velX[i] += dx * forceOverDist;
-                        this.nodlets.velY[i] += dy * forceOverDist;
+                        n_velX[i] += dx * forceOverDist;
+                        n_velY[i] += dy * forceOverDist;
                     } else {
                         // Orbiting
-                        this.nodlets.state[i] = 2; // Orbiting
+                        n_state[i] = 2; // Orbiting
 
                         // Perpendicular vector for orbit, factoring in user desired direction
-                        const dir = this.nodlets.orbitDirection[i];
+                        const dir = n_orbitDirection[i];
                         const pX = -dy * dir;
                         const pY = dx * dir;
                         const dist = Math.sqrt(distSq);
@@ -626,52 +649,52 @@ class CanvasGame {
                         const tangentX = pX * orbitOverDist;
                         const tangentY = pY * orbitOverDist;
 
-                        this.nodlets.velX[i] += tangentX + pullX;
-                        this.nodlets.velY[i] += tangentY + pullY;
+                        n_velX[i] += tangentX + pullX;
+                        n_velY[i] += tangentY + pullY;
 
                         // Apply friction to keep orbit stable
-                        this.nodlets.velX[i] *= 0.95;
-                        this.nodlets.velY[i] *= 0.95;
+                        n_velX[i] *= 0.95;
+                        n_velY[i] *= 0.95;
                     }
                 } else {
                     // WANDER EMULATOR (if absolutely no servers exist)
-                    this.nodlets.state[i] = 0;
-                    this.nodlets.wanderTimer[i] -= deltaTime;
-                    if (this.nodlets.wanderTimer[i] <= 0) {
-                        this.nodlets.wanderAngle[i] += (Math.random() - 0.5) * Math.PI;
-                        this.nodlets.wanderTimer[i] = 1 + Math.random() * 2;
+                    n_state[i] = 0;
+                    n_wanderTimer[i] -= deltaTime;
+                    if (n_wanderTimer[i] <= 0) {
+                        n_wanderAngle[i] += (Math.random() - 0.5) * Math.PI;
+                        n_wanderTimer[i] = 1 + Math.random() * 2;
                     }
 
                     // Constrain wander within Influence zone BEFORE moving
-                    let wanderVx = Math.cos(this.nodlets.wanderAngle[i]) * MAX_WANDER_SPEED;
-                    let wanderVy = Math.sin(this.nodlets.wanderAngle[i]) * MAX_WANDER_SPEED;
+                    let wanderVx = Math.cos(n_wanderAngle[i]) * MAX_WANDER_SPEED;
+                    let wanderVy = Math.sin(n_wanderAngle[i]) * MAX_WANDER_SPEED;
 
                     const dHubX = (cx + wanderVx * deltaTime) - hx;
                     const dHubY = (cy + wanderVy * deltaTime) - hy;
 
                     if (dHubX * dHubX + dHubY * dHubY > currentInfluence * currentInfluence) {
                         // Point back to hub
-                        this.nodlets.wanderAngle[i] = Math.atan2(hy - cy, hx - cx);
-                        wanderVx = Math.cos(this.nodlets.wanderAngle[i]) * MAX_WANDER_SPEED;
-                        wanderVy = Math.sin(this.nodlets.wanderAngle[i]) * MAX_WANDER_SPEED;
+                        n_wanderAngle[i] = Math.atan2(hy - cy, hx - cx);
+                        wanderVx = Math.cos(n_wanderAngle[i]) * MAX_WANDER_SPEED;
+                        wanderVy = Math.sin(n_wanderAngle[i]) * MAX_WANDER_SPEED;
                     }
 
-                    this.nodlets.velX[i] += (wanderVx - this.nodlets.velX[i]) * 0.1;
-                    this.nodlets.velY[i] += (wanderVy - this.nodlets.velY[i]) * 0.1;
+                    n_velX[i] += (wanderVx - n_velX[i]) * 0.1;
+                    n_velY[i] += (wanderVy - n_velY[i]) * 0.1;
                 }
             } else if (state === 1) { // Returning to Hub
                 const dx = hx - cx;
                 const dy = hy - cy;
                 const distSq = dx * dx + dy * dy;
 
-                if (distSq < this.hubs.size[hubIdx] * this.hubs.size[hubIdx]) {
+                if (distSq < h_size[hubIdx] * h_size[hubIdx]) {
                     // Deposit Data
                     this.upgrades.addTotalData(carriedData); // Adds to global pool and point pool
                     this.hubs.depositData(hubIdx, carriedData); // Adds to XP
-                    this.nodlets.carriedData[i] = 0;
-                    this.nodlets.state[i] = 0;
-                    this.nodlets.velX[i] *= 0.1;
-                    this.nodlets.velY[i] *= 0.1;
+                    n_carriedData[i] = 0;
+                    n_state[i] = 0;
+                    n_velX[i] *= 0.1;
+                    n_velY[i] *= 0.1;
 
                     // Cap speed on return just in case
                 } else {
@@ -686,14 +709,14 @@ class CanvasGame {
                     // Interpolate current velocity towards target velocity
                     // This naturally smooths the curve and kills orbital momentum
                     const turnSpeed = 4.0; // Higher = tighter turns
-                    this.nodlets.velX[i] += (targetVx - this.nodlets.velX[i]) * turnSpeed * deltaTime;
-                    this.nodlets.velY[i] += (targetVy - this.nodlets.velY[i]) * turnSpeed * deltaTime;
+                    n_velX[i] += (targetVx - n_velX[i]) * turnSpeed * deltaTime;
+                    n_velY[i] += (targetVy - n_velY[i]) * turnSpeed * deltaTime;
                 }
             }
 
             // Hard clamp to influence zone (Wall)
-            const dxToHub = this.nodlets.posX[i] - hx;
-            const dyToHub = this.nodlets.posY[i] - hy;
+            const dxToHub = n_posX[i] - hx;
+            const dyToHub = n_posY[i] - hy;
             const distToHubSq = dxToHub * dxToHub + dyToHub * dyToHub;
 
             if (distToHubSq > currentInfluence * currentInfluence) {
@@ -701,16 +724,16 @@ class CanvasGame {
                 // Clamp position to exactly the radius
                 // ⚡ Bolt Optimization: Hoist division to single multiplication factor
                 const influenceOverDist = currentInfluence / distToHub;
-                this.nodlets.posX[i] = hx + dxToHub * influenceOverDist;
-                this.nodlets.posY[i] = hy + dyToHub * influenceOverDist;
+                n_posX[i] = hx + dxToHub * influenceOverDist;
+                n_posY[i] = hy + dyToHub * influenceOverDist;
 
                 // Bounce velocities to prevent getting stuck pushing against the wall
-                this.nodlets.velX[i] *= -0.8;
-                this.nodlets.velY[i] *= -0.8;
+                n_velX[i] *= -0.8;
+                n_velY[i] *= -0.8;
 
                 // If wandering, turn them around immediately
                 if (state === 0) {
-                    this.nodlets.wanderAngle[i] = Math.atan2(hy - this.nodlets.posY[i], hx - this.nodlets.posX[i]);
+                    n_wanderAngle[i] = Math.atan2(hy - n_posY[i], hx - n_posX[i]);
                 }
             }
         } // End of Nodlets AI loop
