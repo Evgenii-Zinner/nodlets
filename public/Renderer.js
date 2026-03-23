@@ -225,16 +225,29 @@ export class Renderer {
                     sprite.texture = this.dataTexture;
                 }
 
-                sprite.position.set(resources.posX[i], resources.posY[i]);
+                // ⚡ Bolt Optimization: Avoid redundant PIXI Transform cache invalidations
+                const targetX = resources.posX[i];
+                const targetY = resources.posY[i];
+                if (sprite.position.x !== targetX || sprite.position.y !== targetY) {
+                    sprite.position.set(targetX, targetY);
+                }
 
                 if (resources.type[i] === 0 || resources.type[i] === 1) {
                     // Scale server based on current amount vs max amount
-                    const scale = 0.5 + (resources.amount[i] / resources.maxAmount[i]) * 0.5;
-                    sprite.scale.set(scale);
-                    sprite.alpha = 0.5 + (resources.amount[i] / resources.maxAmount[i]) * 0.5;
+                    const targetScale = 0.5 + (resources.amount[i] / resources.maxAmount[i]) * 0.5;
+                    if (sprite.scale.x !== targetScale) {
+                        sprite.scale.set(targetScale);
+                    }
+                    if (sprite.alpha !== targetScale) {
+                        sprite.alpha = targetScale;
+                    }
                 } else {
-                    sprite.scale.set(1);
-                    sprite.alpha = 1.0;
+                    if (sprite.scale.x !== 1) {
+                        sprite.scale.set(1);
+                    }
+                    if (sprite.alpha !== 1.0) {
+                        sprite.alpha = 1.0;
+                    }
                 }
             } else {
                 sprite.visible = false;
@@ -349,7 +362,10 @@ export class Renderer {
                 }
 
                 root.visible = true;
-                root.position.set(nx, ny);
+                // ⚡ Bolt Optimization: Avoid redundant PIXI Transform cache invalidations
+                if (root.position.x !== nx || root.position.y !== ny) {
+                    root.position.set(nx, ny);
+                }
 
                 const body = root._body;
                 const bars = root._bars;
@@ -366,7 +382,10 @@ export class Renderer {
                 let targetHeight = baseSize * squash;
 
                 if (speed > 0.1) {
-                    body.rotation = Math.atan2(vy, vx);
+                    const targetRotation = Math.atan2(vy, vx);
+                    if (body.rotation !== targetRotation) {
+                        body.rotation = targetRotation;
+                    }
                 }
 
                 // If returning with data, glow or pulsate a bit
@@ -395,12 +414,14 @@ export class Renderer {
                     const fill = bars._fill;
 
                     // Update BG
-                    bg.width = barWidth;
-                    bg.position.set(0, yOffset);
+                    if (bg.width !== barWidth) bg.width = barWidth;
+                    if (bg.position.x !== 0 || bg.position.y !== yOffset) bg.position.set(0, yOffset);
 
                     // Cyan for data
-                    fill.width = barWidth * dataPercent;
-                    fill.position.set(-barWidth / 2, yOffset);
+                    const fillTargetWidth = barWidth * dataPercent;
+                    const fillTargetX = -barWidth / 2;
+                    if (fill.width !== fillTargetWidth) fill.width = fillTargetWidth;
+                    if (fill.position.x !== fillTargetX || fill.position.y !== yOffset) fill.position.set(fillTargetX, yOffset);
                 } else {
                     bars.visible = false;
                 }
