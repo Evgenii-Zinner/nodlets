@@ -63,3 +63,63 @@ function runBenchmark() {
 }
 
 runBenchmark();
+
+function runDistanceBenchmark() {
+    console.log("\n--- Distance Check Hoisting Benchmark ---");
+    const iterations = 5000;
+    const nodletsCount = 10000;
+
+    const h_size = new Float32Array(100);
+    h_size.fill(50);
+
+    const dx = new Float32Array(nodletsCount);
+    const dy = new Float32Array(nodletsCount);
+    for(let i=0; i<nodletsCount; i++) {
+        dx[i] = Math.random() * 200 - 100;
+        dy[i] = Math.random() * 200 - 100;
+    }
+
+    const hubIdx = 0;
+
+    let a_time = 0;
+    let b_time = 0;
+
+    // Unhoisted Loop
+    let start = performance.now();
+    for (let i = 0; i < iterations; i++) {
+        for(let n = 0; n < nodletsCount; n++) {
+            const dxx = dx[n];
+            const dyy = dy[n];
+            const distSq = dxx * dxx + dyy * dyy;
+
+            if (distSq < h_size[hubIdx] * h_size[hubIdx]) {
+                // simulate action
+                let x = 1;
+            }
+        }
+    }
+    a_time = performance.now() - start;
+
+    // Hoisted Loop
+    start = performance.now();
+    for (let i = 0; i < iterations; i++) {
+        const h_sizeSq = h_size[hubIdx] * h_size[hubIdx];
+        for(let n = 0; n < nodletsCount; n++) {
+            const dxx = dx[n];
+            const dyy = dy[n];
+            const distSq = dxx * dxx + dyy * dyy;
+
+            if (distSq < h_sizeSq) {
+                // simulate action
+                let x = 1;
+            }
+        }
+    }
+    b_time = performance.now() - start;
+
+    console.log(`Unhoisted h_size Check Time: ${a_time.toFixed(2)} ms`);
+    console.log(`Hoisted h_size Check Time: ${b_time.toFixed(2)} ms`);
+    console.log(`Performance Improvement: ${((a_time - b_time) / a_time * 100).toFixed(2)}% faster`);
+}
+
+runDistanceBenchmark();

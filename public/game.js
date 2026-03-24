@@ -553,6 +553,9 @@ class CanvasGame {
         const r_posX = this.resources.posX;
         const r_posY = this.resources.posY;
 
+        // ⚡ Bolt Optimization: Pre-calculate squared influence outside the loop
+        const currentInfluenceSq = currentInfluence * currentInfluence;
+
         for (let i = 0; i < this.nodlets.count; i++) {
             const cx = n_posX[i];
             const cy = n_posY[i];
@@ -602,7 +605,7 @@ class CanvasGame {
                     const ty = r_posY[targetId];
                     const dxToHub = tx - hx;
                     const dyToHub = ty - hy;
-                    if (dxToHub * dxToHub + dyToHub * dyToHub > currentInfluence * currentInfluence) {
+                    if (dxToHub * dxToHub + dyToHub * dyToHub > currentInfluenceSq) {
                         targetId = -1; // Target is outside influence zone, ignore it
                     }
                 }
@@ -679,7 +682,7 @@ class CanvasGame {
                     const dHubX = (cx + wanderVx * deltaTime) - hx;
                     const dHubY = (cy + wanderVy * deltaTime) - hy;
 
-                    if (dHubX * dHubX + dHubY * dHubY > currentInfluence * currentInfluence) {
+                    if (dHubX * dHubX + dHubY * dHubY > currentInfluenceSq) {
                         // Point back to hub
                         n_wanderAngle[i] = Math.atan2(hy - cy, hx - cx);
                         wanderVx = Math.cos(n_wanderAngle[i]) * MAX_WANDER_SPEED;
@@ -726,7 +729,7 @@ class CanvasGame {
             const dyToHub = n_posY[i] - hy;
             const distToHubSq = dxToHub * dxToHub + dyToHub * dyToHub;
 
-            if (distToHubSq > currentInfluence * currentInfluence) {
+            if (distToHubSq > currentInfluenceSq) {
                 const distToHub = Math.sqrt(distToHubSq);
                 // Clamp position to exactly the radius
                 // ⚡ Bolt Optimization: Hoist division to single multiplication factor

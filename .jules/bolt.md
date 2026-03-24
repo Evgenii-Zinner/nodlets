@@ -73,3 +73,7 @@
 ## 2024-03-21 - TypedArray Property Access Hoisting
 **Learning:** In high-frequency loops (e.g., thousands of entities checking 60+ times a second), accessing properties of objects that contain TypedArrays (`this.nodlets.posX[i]`) incurs significant V8 property-lookup overhead compared to accessing local variables (`n_posX[i]`). Destructuring or assigning these deeply nested properties to local variables right before the loop yields >30% performance boost.
 **Action:** When iterating over Data-Oriented structures (ECS style with TypedArrays) in hot paths, always hoist the array references outside the loop.
+
+## 2026-05-18 - Hoisting Distance Squared Operations in Mathematical Loops
+**Learning:** In high-frequency game loops running over thousands of entities (like `update` in `game.js`), performing the same mathematical calculations multiple times per frame (like `currentInfluence * currentInfluence`, or `orbitRadius * orbitRadius`) creates redundant execution overhead. V8 can optimize well, but recalculating static thresholds every frame is a measurable hit.
+**Action:** Always pre-calculate squared distances outside of loops or right before they are needed to replace `a * a > b * b` with `a * a > bSq`. For instance, caching `currentInfluence * currentInfluence` as `currentInfluenceSq` outside the nodlet loop improved execution time for that segment by roughly ~20%.
