@@ -93,34 +93,47 @@ export class NodletSystem {
     }
 
     update(deltaTime, world) {
-        for (let i = 0; i < this.count; i++) {
-            this.age[i] += deltaTime;
+        // ⚡ Bolt Optimization: Cache frequently accessed TypedArrays to local variables to avoid O(N) property lookups
+        const count = this.count;
+        const n_age = this.age;
+        const n_posX = this.posX;
+        const n_posY = this.posY;
+        const n_velX = this.velX;
+        const n_velY = this.velY;
+        const n_size = this.size;
 
-            this.posX[i] += this.velX[i] * deltaTime;
-            this.posY[i] += this.velY[i] * deltaTime;
+        const wWidth = world.width;
+        const wHeight = world.height;
+
+        for (let i = 0; i < count; i++) {
+            n_age[i] += deltaTime;
+
+            let px = n_posX[i] + n_velX[i] * deltaTime;
+            let py = n_posY[i] + n_velY[i] * deltaTime;
 
             // Keep inside world bounds with soft bounce
-            const radius = this.size[i] / 2;
-            const minX = radius;
-            const maxX = world.width - radius;
-            const minY = radius;
-            const maxY = world.height - radius;
+            const radius = n_size[i] / 2;
+            const maxX = wWidth - radius;
+            const maxY = wHeight - radius;
 
-            if (this.posX[i] < minX) {
-                this.posX[i] = minX;
-                this.velX[i] *= -0.6;
-            } else if (this.posX[i] > maxX) {
-                this.posX[i] = maxX;
-                this.velX[i] *= -0.6;
+            if (px < radius) {
+                px = radius;
+                n_velX[i] *= -0.6;
+            } else if (px > maxX) {
+                px = maxX;
+                n_velX[i] *= -0.6;
             }
 
-            if (this.posY[i] < minY) {
-                this.posY[i] = minY;
-                this.velY[i] *= -0.6;
-            } else if (this.posY[i] > maxY) {
-                this.posY[i] = maxY;
-                this.velY[i] *= -0.6;
+            if (py < radius) {
+                py = radius;
+                n_velY[i] *= -0.6;
+            } else if (py > maxY) {
+                py = maxY;
+                n_velY[i] *= -0.6;
             }
+
+            n_posX[i] = px;
+            n_posY[i] = py;
         }
     }
 }
