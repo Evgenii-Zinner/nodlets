@@ -51,6 +51,7 @@ class CanvasGame {
         // Pre-allocated array of arrays for spatial grid optimization
         this.hubTargets = Array.from({ length: this.hubs.maxHubs }, () => new Int32Array(this.resources.maxResources));
         this.hubTargetsCount = new Int32Array(this.hubs.maxHubs);
+        this.hubSizeSq = new Float32Array(this.hubs.maxHubs);
 
         // Pre-allocated array for retrieving neighbors without closure allocations
         this.tempNeighbors = new Int32Array(this.resources.maxResources);
@@ -457,6 +458,7 @@ class CanvasGame {
         // Core Hub and Upgrades sync
         const baseInfluence = 500;
         const currentInfluence = baseInfluence + this.upgrades.perks.hubInfluenceRadiusBoost;
+        const currentInfluenceSq = currentInfluence * currentInfluence;
         const maxNodlets = 10 + this.upgrades.perks.nodletAmountBoost;
         const globalNodletCap = 8 + this.upgrades.perks.nodletCapacityBoost;
 
@@ -465,6 +467,8 @@ class CanvasGame {
         for (let i = 0; i < this.hubs.count; i++) {
             this.hubs.baseNodletCapacity[i] = maxNodlets;
             this.hubs.activeNodlets[i] = 0;
+            const hs = this.hubs.size[i];
+            this.hubSizeSq[i] = hs * hs;
         }
 
         // 2. Count active nodlets per hub (O(Nodlets))
@@ -628,8 +632,9 @@ class CanvasGame {
                     const distSq = dx * dx + dy * dy;
 
                     const orbitRadius = n_orbitRadius[i];
+                    const orbitRadiusSq = orbitRadius * orbitRadius;
 
-                    if (distSq > orbitRadius * orbitRadius * 1.5) {
+                    if (distSq > orbitRadiusSq * 1.5) {
                         // Fly towards target
                         n_state[i] = 0; // Seeking
                         const dist = Math.sqrt(distSq);
@@ -697,7 +702,7 @@ class CanvasGame {
                 const dy = hy - cy;
                 const distSq = dx * dx + dy * dy;
 
-                if (distSq < h_size[hubIdx] * h_size[hubIdx]) {
+                if (distSq < this.hubSizeSq[hubIdx]) {
                     // Deposit Data
                     this.upgrades.addTotalData(carriedData); // Adds to global pool and point pool
                     this.hubs.depositData(hubIdx, carriedData); // Adds to XP
