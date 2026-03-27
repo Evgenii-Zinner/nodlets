@@ -51,6 +51,7 @@ class CanvasGame {
         // Pre-allocated array of arrays for spatial grid optimization
         this.hubTargets = Array.from({ length: this.hubs.maxHubs }, () => new Int32Array(this.resources.maxResources));
         this.hubTargetsCount = new Int32Array(this.hubs.maxHubs);
+        this.hubSizeSq = new Float32Array(this.hubs.maxHubs);
 
         // Pre-allocated array for retrieving neighbors without closure allocations
         this.tempNeighbors = new Int32Array(this.resources.maxResources);
@@ -457,6 +458,7 @@ class CanvasGame {
         // Core Hub and Upgrades sync
         const baseInfluence = 500;
         const currentInfluence = baseInfluence + this.upgrades.perks.hubInfluenceRadiusBoost;
+        const currentInfluenceSq = currentInfluence * currentInfluence;
         const maxNodlets = 10 + this.upgrades.perks.nodletAmountBoost;
         const globalNodletCap = 8 + this.upgrades.perks.nodletCapacityBoost;
 
@@ -465,6 +467,8 @@ class CanvasGame {
         for (let i = 0; i < this.hubs.count; i++) {
             this.hubs.baseNodletCapacity[i] = maxNodlets;
             this.hubs.activeNodlets[i] = 0;
+            const hs = this.hubs.size[i];
+            this.hubSizeSq[i] = hs * hs;
         }
 
         // 2. Count active nodlets per hub (O(Nodlets))
@@ -602,7 +606,7 @@ class CanvasGame {
                     const ty = r_posY[targetId];
                     const dxToHub = tx - hx;
                     const dyToHub = ty - hy;
-                    if (dxToHub * dxToHub + dyToHub * dyToHub > currentInfluence * currentInfluence) {
+                    if (dxToHub * dxToHub + dyToHub * dyToHub > currentInfluenceSq) {
                         targetId = -1; // Target is outside influence zone, ignore it
                     }
                 }
@@ -625,8 +629,9 @@ class CanvasGame {
                     const distSq = dx * dx + dy * dy;
 
                     const orbitRadius = n_orbitRadius[i];
+                    const orbitRadiusSq = orbitRadius * orbitRadius;
 
-                    if (distSq > orbitRadius * orbitRadius * 1.5) {
+                    if (distSq > orbitRadiusSq * 1.5) {
                         // Fly towards target
                         n_state[i] = 0; // Seeking
                         const dist = Math.sqrt(distSq);
@@ -679,7 +684,7 @@ class CanvasGame {
                     const dHubX = (cx + wanderVx * deltaTime) - hx;
                     const dHubY = (cy + wanderVy * deltaTime) - hy;
 
-                    if (dHubX * dHubX + dHubY * dHubY > currentInfluence * currentInfluence) {
+                    if (dHubX * dHubX + dHubY * dHubY > currentInfluenceSq) {
                         // Point back to hub
                         n_wanderAngle[i] = Math.atan2(hy - cy, hx - cx);
                         wanderVx = Math.cos(n_wanderAngle[i]) * MAX_WANDER_SPEED;
@@ -694,7 +699,7 @@ class CanvasGame {
                 const dy = hy - cy;
                 const distSq = dx * dx + dy * dy;
 
-                if (distSq < h_size[hubIdx] * h_size[hubIdx]) {
+                if (distSq < this.hubSizeSq[hubIdx]) {
                     // Deposit Data
                     this.upgrades.addTotalData(carriedData); // Adds to global pool and point pool
                     this.hubs.depositData(hubIdx, carriedData); // Adds to XP
@@ -726,7 +731,7 @@ class CanvasGame {
             const dyToHub = n_posY[i] - hy;
             const distToHubSq = dxToHub * dxToHub + dyToHub * dyToHub;
 
-            if (distToHubSq > currentInfluence * currentInfluence) {
+            if (distToHubSq > currentInfluenceSq) {
                 const distToHub = Math.sqrt(distToHubSq);
                 // Clamp position to exactly the radius
                 // ⚡ Bolt Optimization: Hoist division to single multiplication factor
