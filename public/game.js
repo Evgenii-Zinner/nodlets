@@ -557,6 +557,9 @@ class CanvasGame {
         const r_posX = this.resources.posX;
         const r_posY = this.resources.posY;
 
+        // ⚡ Bolt Optimization: Pre-calculate squared influence outside the loop
+        const currentInfluenceSq = currentInfluence * currentInfluence;
+
         for (let i = 0; i < this.nodlets.count; i++) {
             const cx = n_posX[i];
             const cy = n_posY[i];
