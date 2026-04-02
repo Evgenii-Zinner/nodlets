@@ -202,39 +202,50 @@ export class Renderer {
                 .stroke({ color: 0xFFFFFF, width: 2, alpha: 0.5 });
         }
 
+        // ⚡ Bolt Optimization: Cache TypedArrays to local variables to avoid O(N) property lookups
+        const rCount = resources.count;
+        const rPosX = resources.posX;
+        const rPosY = resources.posY;
+        const rType = resources.type;
+        const rAmount = resources.amount;
+        const rMaxAmount = resources.maxAmount;
+        const minX = bounds.minX;
+        const maxX = bounds.maxX;
+        const minY = bounds.minY;
+        const maxY = bounds.maxY;
+
         // Sync sprites
         for (let i = 0; i < this.resourceSprites.length; i++) {
             const sprite = this.resourceSprites[i];
-            if (i < resources.count) {
+            if (i < rCount) {
                 // Frustum Culling
-                const rx = resources.posX[i];
-                const ry = resources.posY[i];
-                if (rx < bounds.minX || rx > bounds.maxX || ry < bounds.minY || ry > bounds.maxY) {
+                const rx = rPosX[i];
+                const ry = rPosY[i];
+                if (rx < minX || rx > maxX || ry < minY || ry > maxY) {
                     sprite.visible = false;
                     continue;
                 }
 
                 sprite.visible = true;
 
+                const type = rType[i];
                 // 0: Generator, 1: Relay, 2: Packet
-                if (resources.type[i] === 0) {
+                if (type === 0) {
                     sprite.texture = this.generatorTexture;
-                } else if (resources.type[i] === 1) {
+                } else if (type === 1) {
                     sprite.texture = this.relayTexture;
                 } else {
                     sprite.texture = this.dataTexture;
                 }
 
                 // ⚡ Bolt Optimization: Avoid redundant PIXI Transform cache invalidations
-                const targetX = resources.posX[i];
-                const targetY = resources.posY[i];
-                if (sprite.position.x !== targetX || sprite.position.y !== targetY) {
-                    sprite.position.set(targetX, targetY);
+                if (sprite.position.x !== rx || sprite.position.y !== ry) {
+                    sprite.position.set(rx, ry);
                 }
 
-                if (resources.type[i] === 0 || resources.type[i] === 1) {
+                if (type === 0 || type === 1) {
                     // Scale server based on current amount vs max amount
-                    const targetScale = 0.5 + (resources.amount[i] / resources.maxAmount[i]) * 0.5;
+                    const targetScale = 0.5 + (rAmount[i] / rMaxAmount[i]) * 0.5;
                     if (sprite.scale.x !== targetScale) {
                         sprite.scale.set(targetScale);
                     }
@@ -350,13 +361,30 @@ export class Renderer {
 
         const globalPulse = 1.0 + Math.sin(performance.now() * 0.01) * 0.2;
 
+        // ⚡ Bolt Optimization: Cache TypedArrays and scalars to local variables to avoid O(N) property lookups
+        const nCount = nodlets.count;
+        const nPosX = nodlets.posX;
+        const nPosY = nodlets.posY;
+        const nVelX = nodlets.velX;
+        const nVelY = nodlets.velY;
+        const nSize = nodlets.size;
+        const nState = nodlets.state;
+        const nColor = nodlets.color;
+        const nCarriedData = nodlets.carriedData;
+        const nMaxDataCapacity = nodlets.maxDataCapacity;
+        const minX = bounds.minX;
+        const maxX = bounds.maxX;
+        const minY = bounds.minY;
+        const maxY = bounds.maxY;
+        const zoom = camera.zoom;
+
         for (let i = 0; i < this.nodletSprites.length; i++) {
             const root = this.nodletSprites[i];
 
-            if (i < nodlets.count) {
-                const nx = nodlets.posX[i];
-                const ny = nodlets.posY[i];
-                if (nx < bounds.minX || nx > bounds.maxX || ny < bounds.minY || ny > bounds.maxY) {
+            if (i < nCount) {
+                const nx = nPosX[i];
+                const ny = nPosY[i];
+                if (nx < minX || nx > maxX || ny < minY || ny > maxY) {
                     root.visible = false;
                     continue;
                 }
@@ -370,14 +398,14 @@ export class Renderer {
                 const body = root._body;
                 const bars = root._bars;
 
-                const vx = nodlets.velX[i];
-                const vy = nodlets.velY[i];
+                const vx = nVelX[i];
+                const vy = nVelY[i];
                 const speed = Math.sqrt(vx * vx + vy * vy);
 
                 const stretch = Math.min(MAX_SQUASH, 1.0 + (speed * SQUASH_FACTOR));
                 const squash = 1.0 / stretch;
 
-                const baseSize = nodlets.size[i];
+                const baseSize = nSize[i];
                 let targetWidth = baseSize * stretch;
                 let targetHeight = baseSize * squash;
 
@@ -389,7 +417,7 @@ export class Renderer {
                 }
 
                 // If returning with data, glow or pulsate a bit
-                if (nodlets.state[i] === 1) {
+                if (nState[i] === 1) {
                     targetWidth *= globalPulse;
                     targetHeight *= globalPulse;
                 }
@@ -399,16 +427,16 @@ export class Renderer {
                     body.height = targetHeight;
                 }
 
-                const colorInt = nodlets.color[i];
+                const colorInt = nColor[i];
                 const newTint = (colorInt >> 8) & 0xFFFFFF;
                 if (body.tint !== newTint) body.tint = newTint;
 
-                if (camera.zoom > 0.5) {
+                if (zoom > 0.5) {
                     bars.visible = true;
                     // Draw Data Bar instead of Energy
-                    const dataPercent = nodlets.carriedData[i] / nodlets.maxDataCapacity[i];
-                    const barWidth = nodlets.size[i];
-                    const yOffset = -nodlets.size[i]; // Bottom of the bar is top of the nodlet (radius approx)
+                    const dataPercent = nCarriedData[i] / nMaxDataCapacity[i];
+                    const barWidth = baseSize;
+                    const yOffset = -baseSize; // Bottom of the bar is top of the nodlet (radius approx)
 
                     const bg = bars._bg;
                     const fill = bars._fill;
