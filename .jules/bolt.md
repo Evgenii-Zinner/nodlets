@@ -80,3 +80,7 @@
 ## 2024-05-24 - Pre-calculating variables in Hot Loops
 **Learning:** In high-frequency mathematical loops running over thousands of entities (e.g. 10k Nodlets * 60 FPS), repeatedly squaring constants or semi-constants (like `currentInfluence * currentInfluence`, `orbitRadius * orbitRadius`, or `h_size[hubIdx] * h_size[hubIdx]`) causes notable execution overhead.
 **Action:** Always pre-calculate squared distances/thresholds either outside the loop entirely (for static constants) or in earlier O(N) linear passes (like calculating `this.hubSizeSq[i] = h_size[i] * h_size[i]` while iterating hubs). This replaces redundant V8 multiplications with simple variable reads and yields measurable frame time improvements.
+
+## 2024-05-18 - Let variable shadowing cause a SyntaxError in loops
+**Learning:** Redeclaring block-scoped variables via `const` or `let` across sequential loops in the same outer block scope (like pulling out variables multiple times for two independent inner loops in the same method) causes a runtime `SyntaxError: Identifier 'var' has already been declared`. Although these variables logically apply only to the next loop, JavaScript's block scope prevents identical `const` redeclarations within the same block.
+**Action:** Always wrap the setup variables and loop inside a new block scope `{ ... }` when creating repeated variable setups sequentially, or ensure variable names are unique and not redeclared.
