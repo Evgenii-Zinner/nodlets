@@ -558,7 +558,7 @@ class CanvasGame {
         const r_posY = this.resources.posY;
 
         // ⚡ Bolt Optimization: Pre-calculate squared influence outside the loop
-        const currentInfluenceSq = currentInfluence * currentInfluence;
+        // currentInfluenceSq is already declared above
 
         for (let i = 0; i < this.nodlets.count; i++) {
             const cx = n_posX[i];
@@ -654,13 +654,17 @@ class CanvasGame {
 
                         // Pull towards the exact orbit radius
                         const pullFactor = (dist - orbitRadius) * 0.1;
+
+                        // ⚡ Bolt Optimization: Replace multiple floating-point divisions with a single reciprocal multiplication
+                        const invDist = 1.0 / dist;
+
                         // ⚡ Bolt Optimization: Hoist division to single multiplication factors
-                        const pullOverDist = pullFactor / dist;
+                        const pullOverDist = pullFactor * invDist;
                         const pullX = dx * pullOverDist;
                         const pullY = dy * pullOverDist;
 
                         // Orbit speed (significantly faster as requested)
-                        const orbitOverDist = orbitSpeed / dist;
+                        const orbitOverDist = orbitSpeed * invDist;
                         const tangentX = pX * orbitOverDist;
                         const tangentY = pY * orbitOverDist;
 

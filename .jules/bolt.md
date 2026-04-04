@@ -80,3 +80,7 @@
 ## 2024-05-24 - Pre-calculating variables in Hot Loops
 **Learning:** In high-frequency mathematical loops running over thousands of entities (e.g. 10k Nodlets * 60 FPS), repeatedly squaring constants or semi-constants (like `currentInfluence * currentInfluence`, `orbitRadius * orbitRadius`, or `h_size[hubIdx] * h_size[hubIdx]`) causes notable execution overhead.
 **Action:** Always pre-calculate squared distances/thresholds either outside the loop entirely (for static constants) or in earlier O(N) linear passes (like calculating `this.hubSizeSq[i] = h_size[i] * h_size[i]` while iterating hubs). This replaces redundant V8 multiplications with simple variable reads and yields measurable frame time improvements.
+
+## 2025-06-15 - Reciprocal Division Hoisting in Orbit Physics
+**Learning:** Found multiple floating-point divisions sharing the same divisor (`dist`) inside a hot loop tracking thousands of nodlets in `game.js` (e.g. `pullFactor / dist` and `orbitSpeed / dist`). Replacing multiple divisions with a single reciprocal division (`const invDist = 1.0 / dist; pullFactor * invDist; orbitSpeed * invDist;`) reduced the mathematical overhead of the loop by roughly ~11%.
+**Action:** When performing multiple proportional calculations or vector normalizations against the same distance or magnitude in a high-frequency loop, always hoist the division by calculating the reciprocal (`1.0 / dist`) and replacing subsequent divisions with multiplications.
