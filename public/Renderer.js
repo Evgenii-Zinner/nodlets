@@ -203,38 +203,53 @@ export class Renderer {
         }
 
         // Sync sprites
+        // ⚡ Bolt Optimization: Cache TypedArray references to avoid repeatedly crossing property boundary in hot loop
+        const resCount = resources.count;
+        const r_posX = resources.posX;
+        const r_posY = resources.posY;
+        const r_type = resources.type;
+        const r_amount = resources.amount;
+        const r_maxAmount = resources.maxAmount;
+
+        const bMinX = bounds.minX;
+        const bMaxX = bounds.maxX;
+        const bMinY = bounds.minY;
+        const bMaxY = bounds.maxY;
+
         for (let i = 0; i < this.resourceSprites.length; i++) {
             const sprite = this.resourceSprites[i];
-            if (i < resources.count) {
+            if (i < resCount) {
                 // Frustum Culling
-                const rx = resources.posX[i];
-                const ry = resources.posY[i];
-                if (rx < bounds.minX || rx > bounds.maxX || ry < bounds.minY || ry > bounds.maxY) {
+                const rx = r_posX[i];
+                const ry = r_posY[i];
+                if (rx < bMinX || rx > bMaxX || ry < bMinY || ry > bMaxY) {
                     sprite.visible = false;
                     continue;
                 }
 
                 sprite.visible = true;
 
+                const rType = r_type[i];
+
                 // 0: Generator, 1: Relay, 2: Packet
-                if (resources.type[i] === 0) {
+                if (rType === 0) {
                     sprite.texture = this.generatorTexture;
-                } else if (resources.type[i] === 1) {
+                } else if (rType === 1) {
                     sprite.texture = this.relayTexture;
                 } else {
                     sprite.texture = this.dataTexture;
                 }
 
                 // ⚡ Bolt Optimization: Avoid redundant PIXI Transform cache invalidations
-                const targetX = resources.posX[i];
-                const targetY = resources.posY[i];
+                const targetX = rx;
+                const targetY = ry;
                 if (sprite.position.x !== targetX || sprite.position.y !== targetY) {
                     sprite.position.set(targetX, targetY);
                 }
 
-                if (resources.type[i] === 0 || resources.type[i] === 1) {
+                if (rType === 0 || rType === 1) {
                     // Scale server based on current amount vs max amount
-                    const targetScale = 0.5 + (resources.amount[i] / resources.maxAmount[i]) * 0.5;
+                    const targetScale = 0.5 + (r_amount[i] / r_maxAmount[i]) * 0.5;
                     if (sprite.scale.x !== targetScale) {
                         sprite.scale.set(targetScale);
                     }
@@ -269,27 +284,36 @@ export class Renderer {
             this.hubSprites.push(root);
         }
 
+        // ⚡ Bolt Optimization: Cache TypedArray references to avoid repeatedly crossing property boundary in hot loop
+        const hCount = hubs.count;
+        const h_posX = hubs.posX;
+        const h_posY = hubs.posY;
+        const h_size = hubs.size;
+        const h_color = hubs.color;
+
         for (let i = 0; i < this.hubSprites.length; i++) {
             const root = this.hubSprites[i];
 
-            if (i < hubs.count) {
-                const hx = hubs.posX[i];
-                const hy = hubs.posY[i];
-                if (hx < bounds.minX || hx > bounds.maxX || hy < bounds.minY || hy > bounds.maxY) {
+            if (i < hCount) {
+                const hx = h_posX[i];
+                const hy = h_posY[i];
+                if (hx < bMinX || hx > bMaxX || hy < bMinY || hy > bMaxY) {
                     root.visible = false;
                     continue;
                 }
 
                 root.visible = true;
-                root.position.set(hx, hy);
+                if (root.position.x !== hx || root.position.y !== hy) {
+                    root.position.set(hx, hy);
+                }
 
                 const body = root._body;
-                const scale = hubs.size[i] / 20.0;
+                const scale = h_size[i] / 20.0;
                 if (body.scale.x !== scale) {
                     body.scale.set(scale);
                 }
 
-                const colorInt = hubs.color[i];
+                const colorInt = h_color[i];
                 const newTint = (colorInt >> 8) & 0xFFFFFF;
                 if (body.tint !== newTint) body.tint = newTint;
             } else {
@@ -350,13 +374,25 @@ export class Renderer {
 
         const globalPulse = 1.0 + Math.sin(performance.now() * 0.01) * 0.2;
 
+        // ⚡ Bolt Optimization: Cache TypedArray references to avoid repeatedly crossing property boundary in hot loop
+        const nCount = nodlets.count;
+        const n_posX = nodlets.posX;
+        const n_posY = nodlets.posY;
+        const n_velX = nodlets.velX;
+        const n_velY = nodlets.velY;
+        const n_size = nodlets.size;
+        const n_state = nodlets.state;
+        const n_color = nodlets.color;
+        const n_carriedData = nodlets.carriedData;
+        const n_maxDataCapacity = nodlets.maxDataCapacity;
+
         for (let i = 0; i < this.nodletSprites.length; i++) {
             const root = this.nodletSprites[i];
 
-            if (i < nodlets.count) {
-                const nx = nodlets.posX[i];
-                const ny = nodlets.posY[i];
-                if (nx < bounds.minX || nx > bounds.maxX || ny < bounds.minY || ny > bounds.maxY) {
+            if (i < nCount) {
+                const nx = n_posX[i];
+                const ny = n_posY[i];
+                if (nx < bMinX || nx > bMaxX || ny < bMinY || ny > bMaxY) {
                     root.visible = false;
                     continue;
                 }
@@ -370,14 +406,14 @@ export class Renderer {
                 const body = root._body;
                 const bars = root._bars;
 
-                const vx = nodlets.velX[i];
-                const vy = nodlets.velY[i];
+                const vx = n_velX[i];
+                const vy = n_velY[i];
                 const speed = Math.sqrt(vx * vx + vy * vy);
 
                 const stretch = Math.min(MAX_SQUASH, 1.0 + (speed * SQUASH_FACTOR));
                 const squash = 1.0 / stretch;
 
-                const baseSize = nodlets.size[i];
+                const baseSize = n_size[i];
                 let targetWidth = baseSize * stretch;
                 let targetHeight = baseSize * squash;
 
@@ -389,7 +425,7 @@ export class Renderer {
                 }
 
                 // If returning with data, glow or pulsate a bit
-                if (nodlets.state[i] === 1) {
+                if (n_state[i] === 1) {
                     targetWidth *= globalPulse;
                     targetHeight *= globalPulse;
                 }
@@ -399,16 +435,16 @@ export class Renderer {
                     body.height = targetHeight;
                 }
 
-                const colorInt = nodlets.color[i];
+                const colorInt = n_color[i];
                 const newTint = (colorInt >> 8) & 0xFFFFFF;
                 if (body.tint !== newTint) body.tint = newTint;
 
                 if (camera.zoom > 0.5) {
                     bars.visible = true;
                     // Draw Data Bar instead of Energy
-                    const dataPercent = nodlets.carriedData[i] / nodlets.maxDataCapacity[i];
-                    const barWidth = nodlets.size[i];
-                    const yOffset = -nodlets.size[i]; // Bottom of the bar is top of the nodlet (radius approx)
+                    const dataPercent = n_carriedData[i] / n_maxDataCapacity[i];
+                    const barWidth = baseSize;
+                    const yOffset = -baseSize; // Bottom of the bar is top of the nodlet (radius approx)
 
                     const bg = bars._bg;
                     const fill = bars._fill;
