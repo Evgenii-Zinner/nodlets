@@ -512,6 +512,9 @@ class CanvasGame {
         // Optimization: Pre-calculate valid targets for each Hub using Spatial Grid to avoid O(Hubs * Resources) lookup
         // This turns a 200,000 iteration frame (100 hubs * 2k resources) into a fast spatial lookup.
 
+        // ⚡ Bolt Optimization: Cache TypedArray references to local variables to avoid O(N) property lookups
+        const r_type_grid = this.resources.type;
+
         for(let h = 0; h < this.hubs.count; h++) {
             const hx = this.hubs.posX[h];
             const hy = this.hubs.posY[h];
@@ -524,7 +527,8 @@ class CanvasGame {
             for (let i = 0; i < neighborCount; i++) {
 
                 const r = this.tempNeighbors[i];
-                if (this.resources.type[r] === 0 || this.resources.type[r] === 1) {
+                const type = r_type_grid[r];
+                if (type === 0 || type === 1) {
                     targets[targetCount++] = r;
                 }
             }
@@ -556,9 +560,6 @@ class CanvasGame {
         const r_amount = this.resources.amount;
         const r_posX = this.resources.posX;
         const r_posY = this.resources.posY;
-
-        // ⚡ Bolt Optimization: Pre-calculate squared influence outside the loop
-        const currentInfluenceSq = currentInfluence * currentInfluence;
 
         for (let i = 0; i < this.nodlets.count; i++) {
             const cx = n_posX[i];
