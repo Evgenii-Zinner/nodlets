@@ -167,8 +167,21 @@ export class Renderer {
     }
 
     updateResources(resources, bounds, activeTargetServer = -1, selectedServerIndex = -1) {
+        // ⚡ Bolt Optimization: Cache TypedArrays to local variables to avoid O(N) property lookups
+        const count = resources.count;
+        const r_posX = resources.posX;
+        const r_posY = resources.posY;
+        const r_type = resources.type;
+        const r_amount = resources.amount;
+        const r_maxAmount = resources.maxAmount;
+
+        const minX = bounds.minX;
+        const maxX = bounds.maxX;
+        const minY = bounds.minY;
+        const maxY = bounds.maxY;
+
         // Grow pool if needed
-        while (this.resourceSprites.length < resources.count) {
+        while (this.resourceSprites.length < count) {
             const sprite = new PIXI.Sprite();
             sprite.anchor.set(0.5);
             this.resourceContainer.addChild(sprite);
@@ -176,9 +189,9 @@ export class Renderer {
         }
 
         // Draw Selected Server Highlight (Glow)
-        if (selectedServerIndex !== -1 && selectedServerIndex < resources.count) {
-            const tx = resources.posX[selectedServerIndex];
-            const ty = resources.posY[selectedServerIndex];
+        if (selectedServerIndex !== -1 && selectedServerIndex < count) {
+            const tx = r_posX[selectedServerIndex];
+            const ty = r_posY[selectedServerIndex];
 
             this.targetGraphics.circle(tx, ty, 45)
                 .fill({ color: 0xFFFFFF, alpha: 0.15 })
@@ -186,9 +199,9 @@ export class Renderer {
         }
 
         // Draw Target highlight
-        if (activeTargetServer !== -1 && activeTargetServer < resources.count) {
-            const tx = resources.posX[activeTargetServer];
-            const ty = resources.posY[activeTargetServer];
+        if (activeTargetServer !== -1 && activeTargetServer < count) {
+            const tx = r_posX[activeTargetServer];
+            const ty = r_posY[activeTargetServer];
 
             this.targetGraphics.circle(tx, ty, 60)
                 .stroke({ color: 0xFFFFFF, width: 2, alpha: 0.8 });
@@ -205,36 +218,38 @@ export class Renderer {
         // Sync sprites
         for (let i = 0; i < this.resourceSprites.length; i++) {
             const sprite = this.resourceSprites[i];
-            if (i < resources.count) {
+            if (i < count) {
                 // Frustum Culling
-                const rx = resources.posX[i];
-                const ry = resources.posY[i];
-                if (rx < bounds.minX || rx > bounds.maxX || ry < bounds.minY || ry > bounds.maxY) {
+                const rx = r_posX[i];
+                const ry = r_posY[i];
+                if (rx < minX || rx > maxX || ry < minY || ry > maxY) {
                     sprite.visible = false;
                     continue;
                 }
 
                 sprite.visible = true;
 
+                const type = r_type[i];
+
                 // 0: Generator, 1: Relay, 2: Packet
-                if (resources.type[i] === 0) {
+                if (type === 0) {
                     sprite.texture = this.generatorTexture;
-                } else if (resources.type[i] === 1) {
+                } else if (type === 1) {
                     sprite.texture = this.relayTexture;
                 } else {
                     sprite.texture = this.dataTexture;
                 }
 
                 // ⚡ Bolt Optimization: Avoid redundant PIXI Transform cache invalidations
-                const targetX = resources.posX[i];
-                const targetY = resources.posY[i];
+                const targetX = r_posX[i];
+                const targetY = r_posY[i];
                 if (sprite.position.x !== targetX || sprite.position.y !== targetY) {
                     sprite.position.set(targetX, targetY);
                 }
 
-                if (resources.type[i] === 0 || resources.type[i] === 1) {
+                if (type === 0 || type === 1) {
                     // Scale server based on current amount vs max amount
-                    const targetScale = 0.5 + (resources.amount[i] / resources.maxAmount[i]) * 0.5;
+                    const targetScale = 0.5 + (r_amount[i] / r_maxAmount[i]) * 0.5;
                     if (sprite.scale.x !== targetScale) {
                         sprite.scale.set(targetScale);
                     }
@@ -256,7 +271,19 @@ export class Renderer {
     }
 
     updateHubs(hubs, bounds) {
-        while (this.hubSprites.length < hubs.count) {
+        // ⚡ Bolt Optimization: Cache TypedArrays to local variables to avoid O(N) property lookups
+        const count = hubs.count;
+        const h_posX = hubs.posX;
+        const h_posY = hubs.posY;
+        const h_size = hubs.size;
+        const h_color = hubs.color;
+
+        const minX = bounds.minX;
+        const maxX = bounds.maxX;
+        const minY = bounds.minY;
+        const maxY = bounds.maxY;
+
+        while (this.hubSprites.length < count) {
             const root = new PIXI.Container();
 
             const body = new PIXI.Sprite(this.hubTexture);
@@ -272,24 +299,28 @@ export class Renderer {
         for (let i = 0; i < this.hubSprites.length; i++) {
             const root = this.hubSprites[i];
 
-            if (i < hubs.count) {
-                const hx = hubs.posX[i];
-                const hy = hubs.posY[i];
-                if (hx < bounds.minX || hx > bounds.maxX || hy < bounds.minY || hy > bounds.maxY) {
+            if (i < count) {
+                const hx = h_posX[i];
+                const hy = h_posY[i];
+                if (hx < minX || hx > maxX || hy < minY || hy > maxY) {
                     root.visible = false;
                     continue;
                 }
 
                 root.visible = true;
-                root.position.set(hx, hy);
+
+                // ⚡ Bolt Optimization: Avoid redundant PIXI Transform cache invalidations
+                if (root.position.x !== hx || root.position.y !== hy) {
+                    root.position.set(hx, hy);
+                }
 
                 const body = root._body;
-                const scale = hubs.size[i] / 20.0;
+                const scale = h_size[i] / 20.0;
                 if (body.scale.x !== scale) {
                     body.scale.set(scale);
                 }
 
-                const colorInt = hubs.color[i];
+                const colorInt = h_color[i];
                 const newTint = (colorInt >> 8) & 0xFFFFFF;
                 if (body.tint !== newTint) body.tint = newTint;
             } else {
