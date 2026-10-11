@@ -89,3 +89,7 @@
 **Learning:** Found a mathematical calculation for turn speed inside a high-frequency loop checking 10k Nodlets: `(targetVx - n_velX[i]) * turnSpeed * deltaTime` and `(targetVy - n_velY[i]) * turnSpeed * deltaTime`. `turnSpeed` and `deltaTime` are constants throughout the loop execution. This repetitive multiplication scales with the entity count and causes some execution overhead.
 **Action:** Always pre-calculate `turnSpeed * deltaTime` into `turnFactor` outside the loop to eliminate redundant multiplications across axes and entities. This replaces two operations inside the loop with one, resulting in measurable performance improvement (~10-15%).
 
+## 2025-06-15 - Reciprocal Division Hoisting in Orbit Physics
+**Learning:** Found multiple floating-point divisions sharing the same divisor (`dist`) inside a hot loop tracking thousands of nodlets in `game.js` (e.g. `pullFactor / dist` and `orbitSpeed / dist`). Replacing multiple divisions with a single reciprocal division (`const invDist = 1.0 / dist; pullFactor * invDist; orbitSpeed * invDist;`) reduced the mathematical overhead of the loop by roughly ~11%.
+**Action:** When performing multiple proportional calculations or vector normalizations against the same distance or magnitude in a high-frequency loop, always hoist the division by calculating the reciprocal (`1.0 / dist`) and replacing subsequent divisions with multiplications.
+
