@@ -500,8 +500,10 @@ class CanvasGame {
 		const currentInfluence =
 			baseInfluence + this.upgrades.perks.hubInfluenceRadiusBoost;
 		const currentInfluenceSq = currentInfluence * currentInfluence;
-		const maxNodlets = 10 + this.upgrades.perks.nodletAmountBoost;
-		const globalNodletCap = 8 + this.upgrades.perks.nodletCapacityBoost;
+		const maxNodlets =
+			10 +
+			this.upgrades.perks.nodletCapacityBoost +
+			this.upgrades.perks.nodletAmountBoost;
 
 		// Optimization: Replace O(Hubs * Nodlets) nested loop with two O(N) passes.
 		// 1. Reset active counts and calculate capacity
@@ -529,24 +531,8 @@ class CanvasGame {
 				const r = this.hubs.size[i];
 				const nx = this.hubs.posX[i] + Math.cos(angle) * r;
 				const ny = this.hubs.posY[i] + Math.sin(angle) * r;
-				const nIdx = this.nodlets.spawn(nx, ny, i, this.hubs.color[i]);
-				if (nIdx !== -1) {
-					this.nodlets.maxDataCapacity[nIdx] = globalNodletCap;
-				}
+				this.nodlets.spawn(nx, ny, i, this.hubs.color[i]);
 			}
-		}
-
-		// ⚡ Bolt Optimization: Avoid redundant per-frame writes to TypedArrays for global upgrades.
-		// Only update the entire nodlet array when the global cap actually changes or when nodlets are spawned/despawned.
-		if (
-			this._lastGlobalNodletCap !== globalNodletCap ||
-			this._lastNodletCount !== this.nodlets.count
-		) {
-			for (let i = 0; i < this.nodlets.count; i++) {
-				this.nodlets.maxDataCapacity[i] = globalNodletCap;
-			}
-			this._lastGlobalNodletCap = globalNodletCap;
-			this._lastNodletCount = this.nodlets.count;
 		}
 
 		// Nodlet AI
