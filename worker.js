@@ -39,7 +39,14 @@ export default {
 				response = await env.ASSETS.fetch(request);
 			}
 
-			return addSecurityHeaders(response);
+			const finalResponse = addSecurityHeaders(response);
+			if (finalResponse.status === 200) {
+				finalResponse.headers.set(
+					"Cache-Control",
+					"public, max-age=3600, stale-while-revalidate=86400",
+				);
+			}
+			return finalResponse;
 		} catch {
 			return addSecurityHeaders(new Response("Not Found", { status: 404 }));
 		}
