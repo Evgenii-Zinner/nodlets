@@ -512,6 +512,9 @@ class CanvasGame {
         // Optimization: Pre-calculate valid targets for each Hub using Spatial Grid to avoid O(Hubs * Resources) lookup
         // This turns a 200,000 iteration frame (100 hubs * 2k resources) into a fast spatial lookup.
 
+        // ⚡ Bolt Optimization: Cache TypedArray references to local variables to avoid O(N) property lookups
+        const r_type_grid = this.resources.type;
+
         for(let h = 0; h < this.hubs.count; h++) {
             const hx = this.hubs.posX[h];
             const hy = this.hubs.posY[h];
@@ -524,7 +527,8 @@ class CanvasGame {
             for (let i = 0; i < neighborCount; i++) {
 
                 const r = this.tempNeighbors[i];
-                if (this.resources.type[r] === 0 || this.resources.type[r] === 1) {
+                const type = r_type_grid[r];
+                if (type === 0 || type === 1) {
                     targets[targetCount++] = r;
                 }
             }
@@ -557,8 +561,9 @@ class CanvasGame {
         const r_posX = this.resources.posX;
         const r_posY = this.resources.posY;
 
-        // ⚡ Bolt Optimization: Pre-calculate squared influence outside the loop
-        const currentInfluenceSq = currentInfluence * currentInfluence;
+        // ⚡ Bolt Optimization: Hoist mathematical calculations for turn speed out of loop
+        const turnSpeed = 4.0; // Higher = tighter turns
+        const turnFactor = turnSpeed * deltaTime;
 
         for (let i = 0; i < this.nodlets.count; i++) {
             const cx = n_posX[i];
@@ -654,13 +659,17 @@ class CanvasGame {
 
                         // Pull towards the exact orbit radius
                         const pullFactor = (dist - orbitRadius) * 0.1;
+
+                        // ⚡ Bolt Optimization: Replace multiple floating-point divisions with a single reciprocal multiplication
+                        const invDist = 1.0 / dist;
+
                         // ⚡ Bolt Optimization: Hoist division to single multiplication factors
-                        const pullOverDist = pullFactor / dist;
+                        const pullOverDist = pullFactor * invDist;
                         const pullX = dx * pullOverDist;
                         const pullY = dy * pullOverDist;
 
                         // Orbit speed (significantly faster as requested)
-                        const orbitOverDist = orbitSpeed / dist;
+                        const orbitOverDist = orbitSpeed * invDist;
                         const tangentX = pX * orbitOverDist;
                         const tangentY = pY * orbitOverDist;
 
@@ -723,9 +732,8 @@ class CanvasGame {
 
                     // Interpolate current velocity towards target velocity
                     // This naturally smooths the curve and kills orbital momentum
-                    const turnSpeed = 4.0; // Higher = tighter turns
-                    n_velX[i] += (targetVx - n_velX[i]) * turnSpeed * deltaTime;
-                    n_velY[i] += (targetVy - n_velY[i]) * turnSpeed * deltaTime;
+                    n_velX[i] += (targetVx - n_velX[i]) * turnFactor;
+                    n_velY[i] += (targetVy - n_velY[i]) * turnFactor;
                 }
             }
 
