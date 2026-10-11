@@ -561,6 +561,10 @@ class CanvasGame {
         const r_posX = this.resources.posX;
         const r_posY = this.resources.posY;
 
+        // ⚡ Bolt Optimization: Hoist mathematical calculations for turn speed out of loop
+        const turnSpeed = 4.0; // Higher = tighter turns
+        const turnFactor = turnSpeed * deltaTime;
+
         for (let i = 0; i < this.nodlets.count; i++) {
             const cx = n_posX[i];
             const cy = n_posY[i];
@@ -724,9 +728,8 @@ class CanvasGame {
 
                     // Interpolate current velocity towards target velocity
                     // This naturally smooths the curve and kills orbital momentum
-                    const turnSpeed = 4.0; // Higher = tighter turns
-                    n_velX[i] += (targetVx - n_velX[i]) * turnSpeed * deltaTime;
-                    n_velY[i] += (targetVy - n_velY[i]) * turnSpeed * deltaTime;
+                    n_velX[i] += (targetVx - n_velX[i]) * turnFactor;
+                    n_velY[i] += (targetVy - n_velY[i]) * turnFactor;
                 }
             }
 
