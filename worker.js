@@ -39,15 +39,9 @@ export default {
 				response = await env.ASSETS.fetch(request);
 			}
 
-			const finalResponse = addSecurityHeaders(response);
-			if (finalResponse.status === 200) {
-				finalResponse.headers.set(
-					"Cache-Control",
-					"public, max-age=3600, stale-while-revalidate=86400",
-				);
-			}
-			return finalResponse;
-		} catch {
+			return addSecurityHeaders(response);
+		} catch (error) {
+			console.error(`Asset fetch failed for ${request.url}:`, error);
 			return addSecurityHeaders(new Response("Not Found", { status: 404 }));
 		}
 	},
