@@ -181,10 +181,23 @@ export class Renderer {
             this.resourceSprites.push(sprite);
         }
 
+        // ⚡ Bolt Optimization: Cache TypedArrays and scalar values to local variables to avoid O(N) property lookups.
+        const rCount = resources.count;
+        const rPosX = resources.posX;
+        const rPosY = resources.posY;
+        const rType = resources.type;
+        const rAmount = resources.amount;
+        const rMaxAmount = resources.maxAmount;
+
+        const minX = bounds.minX;
+        const maxX = bounds.maxX;
+        const minY = bounds.minY;
+        const maxY = bounds.maxY;
+
         // Draw Selected Server Highlight (Glow)
-        if (selectedServerIndex !== -1 && selectedServerIndex < resources.count) {
-            const tx = resources.posX[selectedServerIndex];
-            const ty = resources.posY[selectedServerIndex];
+        if (selectedServerIndex !== -1 && selectedServerIndex < rCount) {
+            const tx = rPosX[selectedServerIndex];
+            const ty = rPosY[selectedServerIndex];
 
             this.targetGraphics.circle(tx, ty, 45)
                 .fill({ color: 0xFFFFFF, alpha: 0.15 })
@@ -192,9 +205,9 @@ export class Renderer {
         }
 
         // Draw Target highlight
-        if (activeTargetServer !== -1 && activeTargetServer < resources.count) {
-            const tx = resources.posX[activeTargetServer];
-            const ty = resources.posY[activeTargetServer];
+        if (activeTargetServer !== -1 && activeTargetServer < rCount) {
+            const tx = rPosX[activeTargetServer];
+            const ty = rPosY[activeTargetServer];
 
             this.targetGraphics.circle(tx, ty, 60)
                 .stroke({ color: 0xFFFFFF, width: 2, alpha: 0.8 });
@@ -207,18 +220,6 @@ export class Renderer {
                 .lineTo(tx + r * Math.cos(time + Math.PI / 2), ty + r * Math.sin(time + Math.PI / 2))
                 .stroke({ color: 0xFFFFFF, width: 2, alpha: 0.5 });
         }
-
-        // ⚡ Bolt Optimization: Cache TypedArrays to local variables to avoid O(N) property lookups
-        const rCount = resources.count;
-        const rPosX = resources.posX;
-        const rPosY = resources.posY;
-        const rType = resources.type;
-        const rAmount = resources.amount;
-        const rMaxAmount = resources.maxAmount;
-        const minX = bounds.minX;
-        const maxX = bounds.maxX;
-        const minY = bounds.minY;
-        const maxY = bounds.maxY;
 
         // Sync sprites
         for (let i = 0; i < this.resourceSprites.length; i++) {
