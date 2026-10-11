@@ -93,3 +93,7 @@
 **Learning:** Found multiple floating-point divisions sharing the same divisor (`dist`) inside a hot loop tracking thousands of nodlets in `game.js` (e.g. `pullFactor / dist` and `orbitSpeed / dist`). Replacing multiple divisions with a single reciprocal division (`const invDist = 1.0 / dist; pullFactor * invDist; orbitSpeed * invDist;`) reduced the mathematical overhead of the loop by roughly ~11%.
 **Action:** When performing multiple proportional calculations or vector normalizations against the same distance or magnitude in a high-frequency loop, always hoist the division by calculating the reciprocal (`1.0 / dist`) and replacing subsequent divisions with multiplications.
 
+## 2024-05-18 - Let variable shadowing cause a SyntaxError in loops
+**Learning:** Redeclaring block-scoped variables via `const` or `let` across sequential loops in the same outer block scope (like pulling out variables multiple times for two independent inner loops in the same method) causes a runtime `SyntaxError: Identifier 'var' has already been declared`. Although these variables logically apply only to the next loop, JavaScript's block scope prevents identical `const` redeclarations within the same block.
+**Action:** Always wrap the setup variables and loop inside a new block scope `{ ... }` when creating repeated variable setups sequentially, or ensure variable names are unique and not redeclared.
+
