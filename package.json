@@ -1,16 +1,24 @@
 {
-  "name": "canvas-game",
-  "version": "1.0.0",
-  "description": "HTML5 Canvas Game on Cloudflare Workers",
-  "main": "worker.js",
-  "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
-  },
-  "keywords": ["cloudflare", "workers", "canvas", "game"],
-  "author": "Evgenii Zinner",
-  "license": "MIT",
-  "devDependencies": {
-    "wrangler": "^3.0.0"
-  }
+	"name": "canvas-game",
+	"version": "1.0.0",
+	"description": "HTML5 Canvas Game on Cloudflare Workers",
+	"main": "worker.js",
+	"scripts": {
+		"dev": "wrangler dev",
+		"deploy": "wrangler deploy",
+		"lint": "biome check .",
+		"format": "biome format --write ."
+	},
+	"keywords": [
+		"cloudflare",
+		"workers",
+		"canvas",
+		"game"
+	],
+	"author": "Evgenii Zinner",
+	"license": "MIT",
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.15",
+		"wrangler": "^3.0.0"
+	}
 }

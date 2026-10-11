@@ -1,14 +1,16 @@
 # Contributing to Nodlets 👾
 
-First off, thank you for considering contributing to Nodlets! Whether you're here to fix a bug, speed up mathematical loops, or teach Nodlets new tricks, all contributions are welcome.
+First off, thank you for considering contributing to Nodlets! Whether you're here to fix a bug, speed up mathematical loops, enhance graphics, or teach Nodlets new tricks, all contributions are welcome.
 
 ---
 
-## 💡 What is this project?
+## 🤖 The Agent-Driven Sandbox Philosophy
 
-Nodlets was born as an experimental playground to see how autonomous AI code optimizers (specifically **Google Jules** and its performance-focused **Bolt** persona) handle hot loops, WebGL transforms, and spatial queries in real-world JavaScript.
+Nodlets was born as an experimental testing ground for autonomous coding agents (specifically **Google Jules** and its **Bolt** persona). We want to keep it that way:
 
-There is no formal winning condition and no traditional gameplay—just a digital terrarium running at 60 FPS.
+- **Agent-First Workflow:** We strongly encourage you to fork this repo and **let coding agents do the work** (Google Jules, Claude Code, Cursor/Windsurf agents, Antigravity, etc.) with **minimal to no human typing**. Treat Nodlets as a sandbox for opinionated coding agents.
+- **Strict Atomic PR Limit:** No 1,000+ line kitchen-sink diffs. All PRs must be small, cohesive, and easy to review (ideally < 200–300 lines diff). One feature, refactor, or optimization at a time.
+- **No Regression Rule:** Check that ES modules parse without duplicate identifier errors or syntax failures.
 
 ---
 
@@ -33,14 +35,34 @@ Nodlets runs on **Cloudflare Workers** with static assets in `public/`.
 
 ---
 
+## 🧹 Code Quality with Biome
+
+We use **Biome** for fast formatting and linting. Before opening a PR, ensure your agent runs:
+
+```bash
+# Check linting and formatting
+pnpm run lint
+
+# Auto-format files
+pnpm run format
+```
+
+Additionally, verify JavaScript syntax across ES modules:
+
+```bash
+for f in public/*.js worker.js; do node --input-type=module --check < "$f"; done
+```
+
+---
+
 ## 📜 Pull Request Guidelines
 
-1. **Keep it working:** Test your changes locally before submitting. Run `node --input-type=module --check < public/game.js` to avoid SyntaxErrors or duplicate declarations.
-2. **Conventional Commits:** Prefer commit messages following conventional standards (e.g. `fix: ...`, `perf: ...`, `chore: ...`).
-3. **No Placebo Variables:** If optimizing loops, ensure hoisted variables or calculations actually provide measurable speedups without shadowing existing declarations.
+1. **Atomic & Focused:** Address one issue or feature per PR. If an agent wants to overhaul three systems, have it split the work into three sequential PRs.
+2. **Conventional Commits:** Use standard commit messages (`feat: ...`, `fix: ...`, `perf: ...`, `refactor: ...`).
+3. **No Redundant Hoisting / Placebo Vars:** When optimizing hot loops, verify variable scope to prevent identifier shadowing or duplicate declarations.
 
 ---
 
 ## 💬 Community
 
-Please note that this project is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold these standards.
+This project is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold these standards.
