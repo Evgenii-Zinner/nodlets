@@ -40,7 +40,8 @@ export default {
 			}
 
 			return addSecurityHeaders(response);
-		} catch {
+		} catch (error) {
+			console.error(`Asset fetch failed for ${request.url}:`, error);
 			return addSecurityHeaders(new Response("Not Found", { status: 404 }));
 		}
 	},
