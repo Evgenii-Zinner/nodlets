@@ -7,3 +7,8 @@
 - **Audited Path:** `public/`
 - **Tests Added / Hardened:** `test/ResourceSystem.test.mjs`
 - **Learning / Discovery:** `ResourceSystem` uses parallel typed arrays for optimized contiguous memory layout and early-exits using spatial grid bounding. Packets deliver data to generators within a hard-coded 50 radius upon arriving within a 100 squared distance tolerance.
+
+## 2023-10-26 - NodletSystem
+- **Audited Path:** `public/`
+- **Tests Added / Hardened:** `test/NodletSystem.test.mjs`
+- **Learning / Discovery:** `NodletSystem` properly applies a "soft bounce" of `vel *= -0.6` at the boundaries to prevent nodlets from getting stuck off-screen, handled securely within bounds and radius. Flat typed arrays maintain deterministic O(1) performance using `Swap & Pop` via `count` decrementing.
