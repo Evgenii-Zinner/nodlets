@@ -12,3 +12,8 @@
 - **Audited Path:** `public/`
 - **Tests Added / Hardened:** `test/NodletSystem.test.mjs`
 - **Learning / Discovery:** `NodletSystem` properly applies a "soft bounce" of `vel *= -0.6` at the boundaries to prevent nodlets from getting stuck off-screen, handled securely within bounds and radius. Flat typed arrays maintain deterministic O(1) performance using `Swap & Pop` via `count` decrementing.
+
+## 2023-10-27 - public
+- **Audited Path:** `public/`
+- **Tests Added / Hardened:** `test/HubSystem.test.mjs`
+- **Learning / Discovery:** `HubSystem` utilizes "Swap and Pop" logic for efficient `despawn` operations, maintaining O(1) removals. Invalid boundary checks (e.g. data deposit to out-of-bound indices, negative counts, despawning max bounds) resolve gracefully without exceptions but silently fail, which is useful context for consumers of the system.
