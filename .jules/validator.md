@@ -17,3 +17,8 @@
 - **Audited Path:** `public/`
 - **Tests Added / Hardened:** `test/HubSystem.test.mjs`
 - **Learning / Discovery:** `HubSystem` utilizes flat TypedArrays and implements entity despawning via an O(1) "Swap and Pop" mechanism. Out-of-bound attempts in operations like `despawn` and `depositData` fail gracefully and silently.
+
+## 2023-10-28 - Camera and Input
+- **Audited Path:** `public/`
+- **Tests Added / Hardened:** `test/Camera.test.mjs`, `test/Input.test.mjs`
+- **Learning / Discovery:** `Input.js` attaches duplicate touchmove event handlers which doubles up processing logic for touch events like pinching and dragging. The `Camera` coordinates logic properly handles viewport translations. Added strict unit testing using test doubles mimicking Canvas and Window behaviour.
