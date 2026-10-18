@@ -26,3 +26,8 @@
 - **Audited Path:** `public/`
 - **Tests Added / Hardened:** `test/Camera.test.mjs`, `test/Input.test.mjs`
 - **Learning / Discovery:** `Input.js` attaches duplicate touchmove event handlers which doubles up processing logic for touch events like pinching and dragging. The `Camera` coordinates logic properly handles viewport translations. Added strict unit testing using test doubles mimicking Canvas and Window behaviour.
+
+## 2023-10-29 - worker.js
+- **Audited Path:** `/`
+- **Tests Added / Hardened:** `test/worker.test.mjs`
+- **Learning / Discovery:** Wrote a test suite for `worker.js`, testing the Cloudflare Worker fetch logic including root redirects to `/index.html`, passthrough for static assets, and the exception handling returning 404s. Checked that security headers are applied consistently in both success and error branches.
