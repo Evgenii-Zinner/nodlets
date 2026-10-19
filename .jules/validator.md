@@ -31,3 +31,7 @@
 - **Audited Path:** `/`
 - **Tests Added / Hardened:** `test/worker.test.mjs`
 - **Learning / Discovery:** Wrote a test suite for `worker.js`, testing the Cloudflare Worker fetch logic including root redirects to `/index.html`, passthrough for static assets, and the exception handling returning 404s. Checked that security headers are applied consistently in both success and error branches.
+## 2023-10-30 - Renderer
+- **Audited Path:** `public/`
+- **Tests Added / Hardened:** `test/Renderer.test.mjs`
+- **Learning / Discovery:** Wrote a test suite for `Renderer.js` with comprehensive mock setups for `PIXI` components (Application, Container, Graphics, Sprite, TilingSprite). Asserts cover DOM interactions, sprite pooling based on camera visibility, bounding box calculations, hub and resource drawing, scaling factors and squash-and-stretch rendering formulas using the AAA pattern. Ensures tests are self-contained without mutating or mocking application variables.
