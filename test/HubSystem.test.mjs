@@ -117,6 +117,9 @@ test("HubSystem - Data Deposit Logic", async (t) => {
 
 			assert.equal(sys.data[0], 0);
 		},
+	);
+});
+
 test("HubSystem spawn - happy path and defaults", () => {
 	const sys = new HubSystem(10);
 	const idx = sys.spawn(100, 200, 0xff0000ff);
