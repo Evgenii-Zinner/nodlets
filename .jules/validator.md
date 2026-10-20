@@ -35,3 +35,8 @@
 - **Audited Path:** `public/`
 - **Tests Added / Hardened:** `test/Renderer.test.mjs`
 - **Learning / Discovery:** Wrote a test suite for `Renderer.js` with comprehensive mock setups for `PIXI` components (Application, Container, Graphics, Sprite, TilingSprite). Asserts cover DOM interactions, sprite pooling based on camera visibility, bounding box calculations, hub and resource drawing, scaling factors and squash-and-stretch rendering formulas using the AAA pattern. Ensures tests are self-contained without mutating or mocking application variables.
+
+## 2023-10-31 - CreatureSystem
+- **Audited Path:** `public/`
+- **Tests Added / Hardened:** `test/CreatureSystem.test.mjs`
+- **Learning / Discovery:** `CreatureSystem` uses parallel typed arrays and a grid system (`initGrid`, `updateGrid`, `forEachNeighbor`) similar to other entities. Movement and updates strictly enforce soft bounds (bouncing at bounds rather than leaving boundaries) and implements "Swap and pop" logic for efficient entity removal without fragmentation.
