@@ -40,3 +40,7 @@
 - **Audited Path:** `public/`
 - **Tests Added / Hardened:** `test/CreatureSystem.test.mjs`
 - **Learning / Discovery:** `CreatureSystem` uses parallel typed arrays and a grid system (`initGrid`, `updateGrid`, `forEachNeighbor`) similar to other entities. Movement and updates strictly enforce soft bounds (bouncing at bounds rather than leaving boundaries) and implements "Swap and pop" logic for efficient entity removal without fragmentation.
+## 2026-10-21 - ResourceSystem
+- **Audited Path:** `test/ResourceSystem.test.mjs`
+- **Tests Added / Hardened:** `test/ResourceSystem.test.mjs`
+- **Learning / Discovery:** `ResourceSystem` correctly drops packets when no generator is within the delivery radius. Upon delivery, the amount is appropriately clamped at `maxAmount` without failing or crashing. A flaky assertion `Math.random() * 100 + 250 >= 251` was fixed by lowering it to the actual inclusive bound of `250`.

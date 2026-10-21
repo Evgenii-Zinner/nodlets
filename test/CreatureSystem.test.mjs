@@ -47,24 +47,27 @@ test("CreatureSystem - Grid and Neighbors", async (t) => {
 		assert.equal(sys.nextInCell[idx2], -1);
 	});
 
-	await t.test("forEachNeighbor accurately returns creatures within radius", () => {
-		const sys = new CreatureSystem(10);
-		sys.initGrid(1000, 1000);
+	await t.test(
+		"forEachNeighbor accurately returns creatures within radius",
+		() => {
+			const sys = new CreatureSystem(10);
+			sys.initGrid(1000, 1000);
 
-		const c1 = sys.spawn(100, 100);
-		const c2 = sys.spawn(120, 100); // dist 20
-		const c3 = sys.spawn(500, 500); // far
+			const c1 = sys.spawn(100, 100);
+			const c2 = sys.spawn(120, 100); // dist 20
+			const c3 = sys.spawn(500, 500); // far
 
-		sys.updateGrid();
+			sys.updateGrid();
 
-		const neighbors = [];
-		sys.forEachNeighbor(100, 100, 50, (idx) => neighbors.push(idx));
+			const neighbors = [];
+			sys.forEachNeighbor(100, 100, 50, (idx) => neighbors.push(idx));
 
-		assert.equal(neighbors.length, 2);
-		assert.ok(neighbors.includes(c1));
-		assert.ok(neighbors.includes(c2));
-		assert.ok(!neighbors.includes(c3));
-	});
+			assert.equal(neighbors.length, 2);
+			assert.ok(neighbors.includes(c1));
+			assert.ok(neighbors.includes(c2));
+			assert.ok(!neighbors.includes(c3));
+		},
+	);
 
 	await t.test("forEachNeighbor gracefully handles uninitialized grid", () => {
 		const sys = new CreatureSystem(10);
@@ -121,21 +124,24 @@ test("CreatureSystem - Spawning Logic", async (t) => {
 });
 
 test("CreatureSystem - Despawn Logic", async (t) => {
-	await t.test("despawns a creature and swaps with last element to maintain density", () => {
-		const sys = new CreatureSystem(10);
-		sys.spawn(10, 10); // idx 0
-		sys.spawn(20, 20); // idx 1
-		sys.spawn(30, 30); // idx 2
+	await t.test(
+		"despawns a creature and swaps with last element to maintain density",
+		() => {
+			const sys = new CreatureSystem(10);
+			sys.spawn(10, 10); // idx 0
+			sys.spawn(20, 20); // idx 1
+			sys.spawn(30, 30); // idx 2
 
-		assert.equal(sys.count, 3);
+			assert.equal(sys.count, 3);
 
-		sys.despawn(1); // despawn middle element
+			sys.despawn(1); // despawn middle element
 
-		assert.equal(sys.count, 2);
-		// Element 2 should have been swapped to position 1
-		assert.equal(sys.posX[1], 30);
-		assert.equal(sys.posY[1], 30);
-	});
+			assert.equal(sys.count, 2);
+			// Element 2 should have been swapped to position 1
+			assert.equal(sys.posX[1], 30);
+			assert.equal(sys.posY[1], 30);
+		},
+	);
 
 	await t.test("ignores out-of-bounds despawn attempts gracefully", () => {
 		const sys = new CreatureSystem(10);

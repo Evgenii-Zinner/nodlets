@@ -47,7 +47,7 @@ test("ResourceSystem - Spawning and Capacity Limits", async (t) => {
 		assert.equal(sys.targetX[idx], 100);
 		assert.equal(sys.amount[idx], 50);
 		assert.ok(
-			sys.speed[idx] >= 251 && sys.speed[idx] <= 350,
+			sys.speed[idx] >= 250 && sys.speed[idx] <= 350,
 			"Packet speed out of bounds",
 		);
 	});
@@ -222,6 +222,69 @@ test("ResourceSystem - Update Logic", async (t) => {
 				sys.amount[sIdx],
 				251,
 				"Server amount should increase by packet amount and regeneration",
+			);
+		},
+	);
+
+	await t.test(
+		"packets despawn and drop data gracefully if no generator is within delivery radius",
+		() => {
+			const sys = new ResourceSystem(10);
+			const world = { width: 1000, height: 1000 };
+
+			// Target at 100, 100
+			// Packet spawned very close to target (distSq < 100)
+			sys.spawnPacket(95, 95, 100, 100, 50);
+
+			// We DO NOT spawn a server near the target.
+			// Let's spawn a server far away just to ensure the packet doesn't deliver to it
+			const sIdx = sys.spawnServer(500, 500, 500, 0);
+			sys.amount[sIdx] = 100;
+
+			assert.equal(sys.count, 2);
+
+			sys.initGrid(world.width, world.height);
+			sys.updateGrid();
+
+			// Update processes movement, finds dist < 10, searches for neighbors within 50 radius
+			sys.update(0.1, world);
+
+			assert.equal(sys.count, 1, "Packet should be despawned (dropped)");
+			// the server gets some natural regen (10 * 0.1 = +1)
+			// Due to swap-and-pop, the server (originally at index 1) is moved to index 0,
+			// but because of the `i--` in `despawn` within `update()`, it is correctly
+			// processed on the next loop iteration (i=0 again).
+			// So it DOES get its natural regeneration (100 + (10 * 0.1) = 101).
+			assert.equal(
+				sys.amount[0],
+				101,
+				"Far server should not receive packet data",
+			);
+		},
+	);
+
+	await t.test(
+		"packet delivery directly increases amount and clamps correctly at maxAmount",
+		() => {
+			const sys = new ResourceSystem(10);
+			const world = { width: 1000, height: 1000 };
+
+			// Target server at 100, 100 with 500 max capacity, currently at 480
+			const sIdx = sys.spawnServer(100, 100, 500, 0);
+			sys.amount[sIdx] = 480;
+
+			// Packet delivering 50 amount (would naturally push to 530, + 1 regen = 531)
+			sys.spawnPacket(95, 95, 100, 100, 50);
+
+			sys.initGrid(world.width, world.height);
+			sys.updateGrid();
+			sys.update(0.1, world);
+
+			assert.equal(sys.count, 1, "Packet should be despawned");
+			assert.equal(
+				sys.amount[sIdx],
+				500,
+				"Server amount should be clamped strictly to maxAmount",
 			);
 		},
 	);
