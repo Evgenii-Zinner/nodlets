@@ -53,11 +53,43 @@ test("NodletSystem - Despawn Logic", async (t) => {
 
 		assert.equal(sys.count, 3);
 
+		// Store properties of the last element before despawn
+		const lastPosX = sys.posX[2];
+		const lastPosY = sys.posY[2];
+		const lastVelX = sys.velX[2];
+		const lastVelY = sys.velY[2];
+		const lastSize = sys.size[2];
+		const lastCarriedData = sys.carriedData[2];
+		const lastMaxCapacity = sys.maxDataCapacity[2];
+		const lastAge = sys.age[2];
+		const lastColor = sys.color[2];
+		const lastHubId = sys.hubId[2];
+		const lastWanderAngle = sys.wanderAngle[2];
+		const lastWanderTimer = sys.wanderTimer[2];
+		const lastOrbitRadius = sys.orbitRadius[2];
+		const lastOrbitDirection = sys.orbitDirection[2];
+		const lastState = sys.state[2];
+
 		sys.despawn(1);
 
 		assert.equal(sys.count, 2);
-		assert.equal(sys.posX[1], 30);
-		assert.equal(sys.posY[1], 30);
+
+		// Assert that ALL properties were correctly swapped
+		assert.equal(sys.posX[1], lastPosX);
+		assert.equal(sys.posY[1], lastPosY);
+		assert.equal(sys.velX[1], lastVelX);
+		assert.equal(sys.velY[1], lastVelY);
+		assert.equal(sys.size[1], lastSize);
+		assert.equal(sys.carriedData[1], lastCarriedData);
+		assert.equal(sys.maxDataCapacity[1], lastMaxCapacity);
+		assert.equal(sys.age[1], lastAge);
+		assert.equal(sys.color[1], lastColor);
+		assert.equal(sys.hubId[1], lastHubId);
+		assert.equal(sys.wanderAngle[1], lastWanderAngle);
+		assert.equal(sys.wanderTimer[1], lastWanderTimer);
+		assert.equal(sys.orbitRadius[1], lastOrbitRadius);
+		assert.equal(sys.orbitDirection[1], lastOrbitDirection);
+		assert.equal(sys.state[1], lastState);
 	});
 
 	await t.test("ignores out-of-bounds despawn attempts gracefully", () => {
@@ -127,6 +159,53 @@ test("NodletSystem - Update Logic", async (t) => {
 			// Velocity should be multiplied by -0.6
 			assert.equal(sys.velX[idx], 60);
 			assert.equal(sys.velY[idx], 60);
+		},
+	);
+
+	await t.test(
+		"does not apply soft bounce when exactly on the min boundary",
+		() => {
+			const sys = new NodletSystem(10);
+			const world = { width: 1000, height: 1000 };
+
+			const idx = sys.spawn(20, 20, 1);
+			sys.size[idx] = 20; // Radius 10
+			sys.velX[idx] = -100; // moving towards left boundary
+			sys.velY[idx] = -100; // moving towards top boundary
+
+			// If dt is 0.1, px = 20 + (-100 * 0.1) = 10 (exactly the radius)
+			sys.update(0.1, world);
+
+			// Should be exactly on bounds, NOT strictly less than radius
+			assert.equal(sys.posX[idx], 10);
+			assert.equal(sys.posY[idx], 10);
+
+			// Velocity should NOT be modified because it's not out of bounds
+			assert.equal(sys.velX[idx], -100);
+			assert.equal(sys.velY[idx], -100);
+		},
+	);
+
+	await t.test(
+		"does not apply soft bounce when exactly on the max boundary",
+		() => {
+			const sys = new NodletSystem(10);
+			const world = { width: 1000, height: 1000 };
+
+			const idx = sys.spawn(980, 980, 1);
+			sys.size[idx] = 20; // Radius 10
+			sys.velX[idx] = 100; // moving towards right boundary
+			sys.velY[idx] = 100; // moving towards bottom boundary
+
+			// If dt is 0.1, px = 980 + (100 * 0.1) = 990 (exactly maxX which is 1000 - 10)
+			sys.update(0.1, world);
+
+			assert.equal(sys.posX[idx], 990);
+			assert.equal(sys.posY[idx], 990);
+
+			// Velocity should NOT be modified because it's not out of bounds
+			assert.equal(sys.velX[idx], 100);
+			assert.equal(sys.velY[idx], 100);
 		},
 	);
 });
