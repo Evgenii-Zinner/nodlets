@@ -24,6 +24,16 @@ test("UpgradeSystem - Core Initialization", async (t) => {
 
 test("UpgradeSystem - Point Calculation", async (t) => {
 	await t.test(
+		"addTotalData with NaN cascades to availablePoints correctly as NaN",
+		() => {
+			const sys = new UpgradeSystem();
+			sys.addTotalData(NaN);
+			assert.ok(Number.isNaN(sys.totalDataEarned));
+			assert.ok(Number.isNaN(sys.availablePoints));
+		},
+	);
+
+	await t.test(
 		"availablePoints calculates from totalDataEarned and bytesPerPoint",
 		() => {
 			const sys = new UpgradeSystem();
@@ -76,6 +86,57 @@ test("UpgradeSystem - Point Calculation", async (t) => {
 });
 
 test("UpgradeSystem - Purchase Logic", async (t) => {
+	await t.test(
+		"accepts purchase when available points perfectly match cost",
+		() => {
+			const sys = new UpgradeSystem();
+			// Tier 1 node costs 1
+			sys.addTotalData(1024 * 1);
+
+			const result = sys.buyUpgrade("tier1", "capacity");
+
+			assert.equal(result, true);
+			assert.equal(sys.spentPoints, 1);
+			assert.equal(sys.availablePoints, 0);
+			assert.equal(sys.tree.tier1.nodes.capacity.unlocked, true);
+		},
+	);
+
+	await t.test(
+		"accepts Tier 2 purchase when available points perfectly match cost",
+		() => {
+			const sys = new UpgradeSystem();
+
+			// Unlock Tier 2 first (needs 3 nodes, cost 3 total)
+			sys.addTotalData(1024 * 5); // Provide 5 points (3 for unlock + 2 for Tier 2)
+			sys.buyUpgrade("tier1", "capacity");
+			sys.buyUpgrade("tier1", "speed");
+			sys.buyUpgrade("tier1", "influence");
+
+			// Verify Tier 2 is unlocked and points are exact for Tier 2 capacity (cost 2)
+			assert.equal(sys.tree.tier2.unlocked, true);
+			assert.equal(sys.availablePoints, 2);
+
+			const result = sys.buyUpgrade("tier2", "capacity");
+
+			assert.equal(result, true);
+			assert.equal(sys.spentPoints, 5);
+			assert.equal(sys.availablePoints, 0);
+			assert.equal(sys.tree.tier2.nodes.capacity.unlocked, true);
+		},
+	);
+
+	await t.test("rejects purchase if available points is NaN", () => {
+		const sys = new UpgradeSystem();
+		sys.addTotalData(NaN);
+
+		const result = sys.buyUpgrade("tier1", "capacity");
+
+		assert.equal(result, false);
+		assert.equal(sys.spentPoints, 0);
+		assert.equal(sys.tree.tier1.nodes.capacity.unlocked, false);
+	});
+
 	await t.test("rejects purchase of non-existent tier", () => {
 		const sys = new UpgradeSystem();
 		sys.addTotalData(1024 * 10);
@@ -127,6 +188,26 @@ test("UpgradeSystem - Purchase Logic", async (t) => {
 });
 
 test("UpgradeSystem - Tier Progression", async (t) => {
+	await t.test(
+		"exceeding Tier 1 unlock thresholds maintains Tier 2 unlocked state safely",
+		() => {
+			const sys = new UpgradeSystem();
+			sys.addTotalData(1024 * 10); // Plenty of points
+
+			sys.buyUpgrade("tier1", "capacity");
+			sys.buyUpgrade("tier1", "speed");
+			sys.buyUpgrade("tier1", "influence");
+
+			assert.equal(sys.tree.tier2.unlocked, true);
+
+			// Buy 4th node
+			sys.buyUpgrade("tier1", "amount");
+
+			// Tier 2 should remain unlocked
+			assert.equal(sys.tree.tier2.unlocked, true);
+		},
+	);
+
 	await t.test("unlocks Tier 2 after 3 Tier 1 nodes are purchased", () => {
 		const sys = new UpgradeSystem();
 		sys.addTotalData(1024 * 10); // Plenty of points

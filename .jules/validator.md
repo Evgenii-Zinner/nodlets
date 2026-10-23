@@ -48,3 +48,7 @@
 - **Audited Path:** `test/`
 - **Tests Added / Hardened:** `test/NodletSystem.test.mjs`
 - **Learning / Discovery:** Hardened O(1) swap logic testing to assert all 15 TypedArrays correctly swap instead of just position bounds, and added edge-case testing validating exactly identical bounds matching during soft bounce boundary enforcement.
+## 2023-11-02 - UpgradeSystem
+- **Audited Path:** `test/`
+- **Tests Added / Hardened:** `test/UpgradeSystem.test.mjs`
+- **Learning / Discovery:** Hardened `UpgradeSystem` by adding tests for exact purchase costs, asserting the preservation of Tier 2 unlocked state when exceeding Tier 1 unlock thresholds, and properly checking cascading `NaN` behaviour via `addTotalData`.
