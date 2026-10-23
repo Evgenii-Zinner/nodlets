@@ -44,3 +44,7 @@
 - **Audited Path:** `test/ResourceSystem.test.mjs`
 - **Tests Added / Hardened:** `test/ResourceSystem.test.mjs`
 - **Learning / Discovery:** `ResourceSystem` correctly drops packets when no generator is within the delivery radius. Upon delivery, the amount is appropriately clamped at `maxAmount` without failing or crashing. A flaky assertion `Math.random() * 100 + 250 >= 251` was fixed by lowering it to the actual inclusive bound of `250`.
+## 2023-11-01 - NodletSystem
+- **Audited Path:** `test/`
+- **Tests Added / Hardened:** `test/NodletSystem.test.mjs`
+- **Learning / Discovery:** Hardened O(1) swap logic testing to assert all 15 TypedArrays correctly swap instead of just position bounds, and added edge-case testing validating exactly identical bounds matching during soft bounce boundary enforcement.
