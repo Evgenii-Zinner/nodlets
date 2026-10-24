@@ -52,3 +52,7 @@
 - **Audited Path:** `test/`
 - **Tests Added / Hardened:** `test/UpgradeSystem.test.mjs`
 - **Learning / Discovery:** Hardened `UpgradeSystem` by adding tests for exact purchase costs, asserting the preservation of Tier 2 unlocked state when exceeding Tier 1 unlock thresholds, and properly checking cascading `NaN` behaviour via `addTotalData`.
+## 2023-11-03 - HubSystem
+- **Audited Path:** `test/`
+- **Tests Added / Hardened:** `test/HubSystem.test.mjs`
+- **Learning / Discovery:** Hardened O(1) swap and pop logic testing in `HubSystem` by explicitly asserting that all properties inside flat parallel arrays (`posX`, `posY`, `data`, `baseNodletCapacity`, `activeNodlets`, `color`, `size`) are cleanly swapped, removing redundant duplicate test suites.

@@ -58,9 +58,11 @@ test("HubSystem - Despawn and Swap/Pop", async (t) => {
 		"despawns a hub and swaps with last element to maintain dense array",
 		() => {
 			const sys = new HubSystem(10);
-			sys.spawn(10, 10); // idx 0
-			sys.spawn(20, 20); // idx 1
-			sys.spawn(30, 30); // idx 2
+			sys.spawn(10, 10, 0x111111); // idx 0
+			sys.spawn(20, 20, 0x222222); // idx 1
+			sys.spawn(30, 30, 0x333333); // idx 2
+			sys.depositData(0, 50);
+			sys.depositData(2, 150);
 
 			assert.equal(sys.count, 3);
 
@@ -69,6 +71,11 @@ test("HubSystem - Despawn and Swap/Pop", async (t) => {
 			assert.equal(sys.count, 2);
 			assert.equal(sys.posX[1], 30);
 			assert.equal(sys.posY[1], 30);
+			assert.equal(sys.data[1], 150);
+			assert.equal(sys.baseNodletCapacity[1], 10);
+			assert.equal(sys.activeNodlets[1], 0);
+			assert.equal(sys.color[1], 0x333333);
+			assert.equal(sys.size[1], 40);
 		},
 	);
 
