@@ -56,3 +56,7 @@
 - **Audited Path:** `test/`
 - **Tests Added / Hardened:** `test/HubSystem.test.mjs`
 - **Learning / Discovery:** Hardened O(1) swap and pop logic testing in `HubSystem` by explicitly asserting that all properties inside flat parallel arrays (`posX`, `posY`, `data`, `baseNodletCapacity`, `activeNodlets`, `color`, `size`) are cleanly swapped, removing redundant duplicate test suites.
+## 2023-11-04 - Input
+- **Audited Path:** `test/`
+- **Tests Added / Hardened:** `test/Input.test.mjs`
+- **Learning / Discovery:** Hardened `Input` testing by adding strict boundary assertions for `moveDist` during mouse clicks and touch taps (detecting under thresholds like 5 or 10 respectively, and ignoring at exactly the threshold), while also resolving missing validations for omitted `onClick` callbacks to prevent runtime exceptions on conditional checks.

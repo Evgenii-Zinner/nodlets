@@ -169,6 +169,36 @@ describe("Input", () => {
 			assert.deepEqual(lastClick, { x: 200, y: 200 });
 		});
 
+		it("detects click if mouse movement is just under boundary threshold (dist < 5)", () => {
+			mockCanvas.dispatchEvent("mousedown", { clientX: 100, clientY: 100 });
+			// Math.hypot(3, 3) is ~4.24 < 5
+			mockCanvas.dispatchEvent("mousemove", { clientX: 103, clientY: 103 });
+			mockCanvas.dispatchEvent("mouseup", {
+				clientX: 103,
+				clientY: 103,
+				offsetX: 200,
+				offsetY: 200,
+			});
+
+			assert.equal(input.isDragging, false);
+			assert.deepEqual(lastClick, { x: 200, y: 200 });
+		});
+
+		it("ignores click if mouse movement is exactly at boundary threshold (dist === 5)", () => {
+			mockCanvas.dispatchEvent("mousedown", { clientX: 100, clientY: 100 });
+			// Math.hypot(3, 4) is 5
+			mockCanvas.dispatchEvent("mousemove", { clientX: 103, clientY: 104 });
+			mockCanvas.dispatchEvent("mouseup", {
+				clientX: 103,
+				clientY: 104,
+				offsetX: 200,
+				offsetY: 200,
+			});
+
+			assert.equal(input.isDragging, false);
+			assert.equal(lastClick, null);
+		});
+
 		it("ignores click if mouse movement is large", () => {
 			mockCanvas.dispatchEvent("mousedown", { clientX: 100, clientY: 100 });
 			// Move significantly
@@ -191,6 +221,23 @@ describe("Input", () => {
 
 			mockCanvas.dispatchEvent("mouseleave", {});
 			assert.equal(input.isDragging, false);
+		});
+
+		it("does not throw if onClick callback is not provided", () => {
+			const inputNoClick = new Input(mockCanvas, mockCamera, () => {});
+			inputNoClick.onClick = undefined; // Force it to be undefined
+
+			mockCanvas.dispatchEvent("mousedown", { clientX: 100, clientY: 100 });
+			// Release within click threshold (dist < 5)
+			mockCanvas.dispatchEvent("mouseup", {
+				clientX: 100,
+				clientY: 100,
+				offsetX: 200,
+				offsetY: 200,
+			});
+
+			assert.equal(inputNoClick.isDragging, false);
+			// Successful execution without throwing validates the test
 		});
 	});
 
@@ -331,6 +378,46 @@ describe("Input", () => {
 			assert.deepEqual(lastClick, { x: 102, y: 102 });
 		});
 
+		it("detects single touch tap if movement is just under boundary threshold (dist < 10)", () => {
+			mockCanvas.dispatchEvent("touchstart", {
+				touches: [{ clientX: 100, clientY: 100 }],
+				preventDefault: () => {},
+			});
+
+			// Move by 6 in both axes (hypot = 8.485 < 10)
+			mockCanvas.dispatchEvent("touchmove", {
+				touches: [{ clientX: 106, clientY: 106 }],
+				preventDefault: () => {},
+			});
+
+			mockCanvas.dispatchEvent("touchend", {
+				touches: [],
+				preventDefault: () => {},
+			});
+
+			assert.deepEqual(lastClick, { x: 106, y: 106 });
+		});
+
+		it("ignores single touch tap if movement is exactly at boundary threshold (dist === 10)", () => {
+			mockCanvas.dispatchEvent("touchstart", {
+				touches: [{ clientX: 100, clientY: 100 }],
+				preventDefault: () => {},
+			});
+
+			// Move by 6 in X, 8 in Y (hypot = 10)
+			mockCanvas.dispatchEvent("touchmove", {
+				touches: [{ clientX: 106, clientY: 108 }],
+				preventDefault: () => {},
+			});
+
+			mockCanvas.dispatchEvent("touchend", {
+				touches: [],
+				preventDefault: () => {},
+			});
+
+			assert.equal(lastClick, null);
+		});
+
 		it("handles two-finger pinch zoom", () => {
 			// Touch start with 2 fingers
 			mockCanvas.dispatchEvent("touchstart", {
@@ -409,6 +496,25 @@ describe("Input", () => {
 			assert.equal(input.isDragging, true);
 			assert.equal(input.dragStartX, 100);
 			assert.equal(input.dragStartY, 100);
+		});
+
+		it("does not throw on touch tap if onClick callback is not provided", () => {
+			const inputNoClick = new Input(mockCanvas, mockCamera, () => {});
+			inputNoClick.onClick = undefined; // Force it to be undefined
+
+			mockCanvas.dispatchEvent("touchstart", {
+				touches: [{ clientX: 100, clientY: 100 }],
+				preventDefault: () => {},
+			});
+
+			// Release within tap threshold (dist < 10)
+			mockCanvas.dispatchEvent("touchend", {
+				touches: [],
+				preventDefault: () => {},
+			});
+
+			assert.equal(inputNoClick.isDragging, false);
+			// Successful execution without throwing validates the test
 		});
 	});
 });
