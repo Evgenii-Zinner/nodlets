@@ -60,3 +60,7 @@
 - **Audited Path:** `test/`
 - **Tests Added / Hardened:** `test/Input.test.mjs`
 - **Learning / Discovery:** Hardened `Input` testing by adding strict boundary assertions for `moveDist` during mouse clicks and touch taps (detecting under thresholds like 5 or 10 respectively, and ignoring at exactly the threshold), while also resolving missing validations for omitted `onClick` callbacks to prevent runtime exceptions on conditional checks.
+## 2023-11-05 - public
+- **Audited Path:** `public/`
+- **Tests Added / Hardened:** `test/Renderer.test.mjs`
+- **Learning / Discovery:** Hardened `Renderer` UI rendering tests by replacing shallow mock tests with boundary interaction assertions verifying the correct visual representation of `activeTargetServer`, `selectedServerIndex`, and `selectedNodletIndex`. Added explicit checks for bounding box logic inside `drawGrid` and `drawInfluenceZones` using PIXI mock injections.
