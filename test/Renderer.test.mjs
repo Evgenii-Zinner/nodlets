@@ -4,7 +4,14 @@ import { afterEach, beforeEach, describe, it } from "node:test";
 class MockContainer {
 	constructor() {
 		this.children = [];
-		this.scale = { set: () => {} };
+		this.scale = {
+			x: 1,
+			y: 1,
+			set: (x, y = x) => {
+				this.scale.x = x;
+				this.scale.y = y;
+			},
+		};
 		this.position = {
 			x: 0,
 			y: 0,
@@ -130,7 +137,7 @@ describe("Renderer", async () => {
 			Rectangle: class {},
 			Text: MockText,
 		};
-		const module = await import(`../public/Renderer.js?update=${Date.now()}`);
+		const module = await import(`../public/Renderer.js`);
 		Renderer = module.Renderer;
 	});
 
@@ -333,6 +340,167 @@ describe("Renderer", async () => {
 		const root = renderer.nodletSprites[0];
 		const bars = root._bars;
 		assert.equal(bars.visible, false);
+	});
+
+	it("updates worldContainer position and scale based on camera", async () => {
+		const colors = { ground: 0x000000, grid: 0x222222 };
+		const world = { width: 1000, height: 1000 };
+		const renderer = new Renderer(colors, world);
+		const mockContainerElement = { appendChild: (_child) => {} };
+		await renderer.init(mockContainerElement);
+
+		const camera = { x: 100, y: 150, zoom: 2.0 };
+		const emptyHubs = { count: 0 };
+		const emptyNodlets = { count: 0 };
+		const emptyResources = { count: 0 };
+
+		renderer.update(camera, emptyHubs, emptyNodlets, emptyResources);
+
+		assert.equal(renderer.worldContainer.scale.x, 2.0);
+		assert.equal(renderer.worldContainer.position.x, -200);
+		assert.equal(renderer.worldContainer.position.y, -300);
+	});
+
+	it("draws influence zones with correct alpha and radius", async () => {
+		const colors = { ground: 0x000000, grid: 0x222222 };
+		const world = { width: 1000, height: 1000 };
+		const renderer = new Renderer(colors, world);
+		const mockContainerElement = { appendChild: (_child) => {} };
+		await renderer.init(mockContainerElement);
+
+		const hubs = {
+			count: 2,
+			posX: new Float32Array([100, 300]),
+			posY: new Float32Array([200, 400]),
+		};
+
+		let circlesDrawn = 0;
+		renderer.influenceGraphics.circle = (x, y, r) => {
+			assert.equal(r, 150);
+			if (circlesDrawn === 0) {
+				assert.equal(x, 100);
+				assert.equal(y, 200);
+			} else {
+				assert.equal(x, 300);
+				assert.equal(y, 400);
+			}
+			circlesDrawn++;
+			return renderer.influenceGraphics;
+		};
+
+		renderer.drawInfluenceZones(hubs, 150);
+		assert.equal(circlesDrawn, 2);
+	});
+
+	it("draws world bounds grid rect", async () => {
+		const colors = { ground: 0x000000, grid: 0x222222 };
+		const world = { width: 1500, height: 2500 };
+		const renderer = new Renderer(colors, world);
+		const mockContainerElement = { appendChild: (_child) => {} };
+		await renderer.init(mockContainerElement);
+
+		let rectDrawn = false;
+		renderer.gridGraphics.rect = (x, y, w, h) => {
+			assert.equal(x, 0);
+			assert.equal(y, 0);
+			assert.equal(w, 1500);
+			assert.equal(h, 2500);
+			rectDrawn = true;
+			return renderer.gridGraphics;
+		};
+
+		renderer.drawGrid({ zoom: 1, x: 0, y: 0 });
+		assert.equal(rectDrawn, true);
+	});
+
+	it("highlights active target server and selected server index", async () => {
+		const colors = { ground: 0x000000, grid: 0x222222 };
+		const world = { width: 1000, height: 1000 };
+		const renderer = new Renderer(colors, world);
+		const mockContainerElement = { appendChild: (_child) => {} };
+		await renderer.init(mockContainerElement);
+
+		const resources = {
+			count: 3,
+			posX: new Float32Array([100, 200, 300]),
+			posY: new Float32Array([100, 200, 300]),
+			type: new Uint8Array([0, 0, 0]),
+			amount: new Float32Array([50, 50, 50]),
+			maxAmount: new Float32Array([100, 100, 100]),
+		};
+
+		const bounds = { minX: 0, maxX: 1000, minY: 0, maxY: 1000 };
+
+		const circles = [];
+		renderer.targetGraphics.circle = (x, y, r) => {
+			circles.push({ x, y, r });
+			return renderer.targetGraphics;
+		};
+
+		const strokes = [];
+		renderer.targetGraphics.stroke = (...args) => {
+			strokes.push(args);
+			return renderer.targetGraphics;
+		};
+
+		const fills = [];
+		renderer.targetGraphics.fill = (...args) => {
+			fills.push(args);
+			return renderer.targetGraphics;
+		};
+
+		// 0 is activeTargetServer, 2 is selectedServerIndex
+		renderer.updateResources(resources, bounds, 0, 2);
+
+		// Assert circles drawn for both
+		assert.equal(circles.length, 2);
+
+		// selectedServerIndex
+		assert.equal(circles[0].x, 300);
+		assert.equal(circles[0].y, 300);
+		assert.equal(circles[0].r, 45);
+
+		// activeTargetServer
+		assert.equal(circles[1].x, 100);
+		assert.equal(circles[1].y, 100);
+		assert.equal(circles[1].r, 60);
+	});
+
+	it("highlights selected nodlet index", async () => {
+		const colors = { ground: 0x000000, grid: 0x222222 };
+		const world = { width: 1000, height: 1000 };
+		const renderer = new Renderer(colors, world);
+		const mockContainerElement = { appendChild: (_child) => {} };
+		await renderer.init(mockContainerElement);
+
+		const nodlets = {
+			count: 2,
+			posX: new Float32Array([50, 150]),
+			posY: new Float32Array([50, 150]),
+			velX: new Float32Array([0, 0]),
+			velY: new Float32Array([0, 0]),
+			size: new Float32Array([10, 10]),
+			state: new Uint8Array([0, 0]),
+			color: new Uint32Array([(0x00ff00 << 8) | 0xff, (0x00ff00 << 8) | 0xff]),
+			carriedData: new Float32Array([0, 0]),
+			maxDataCapacity: new Float32Array([100, 100]),
+		};
+
+		const bounds = { minX: 0, maxX: 1000, minY: 0, maxY: 1000 };
+		const camera = { zoom: 1 };
+
+		const circles = [];
+		renderer.targetGraphics.circle = (x, y, r) => {
+			circles.push({ x, y, r });
+			return renderer.targetGraphics;
+		};
+
+		renderer.updateNodlets(nodlets, camera, bounds, 1);
+
+		assert.equal(circles.length, 1);
+		assert.equal(circles[0].x, 150);
+		assert.equal(circles[0].y, 150);
+		assert.equal(circles[0].r, 20);
 	});
 
 	it("draws global debug information properly", async () => {
