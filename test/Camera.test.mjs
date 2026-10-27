@@ -17,6 +17,15 @@ describe("Camera", () => {
 		assert.equal(camera.y, 200);
 	});
 
+	it("centers on the world with a non-default zoom level", () => {
+		const camera = new Camera(world, screen);
+		camera.zoom = 2;
+		camera.centerOn(world, screen);
+
+		assert.equal(camera.x, 300);
+		assert.equal(camera.y, 350);
+	});
+
 	it("centers on a specific coordinate via focusOn", () => {
 		const camera = new Camera(world, screen);
 		const focusX = 300;
@@ -26,6 +35,18 @@ describe("Camera", () => {
 
 		assert.equal(camera.x, -100);
 		assert.equal(camera.y, 100);
+	});
+
+	it("focuses on a specific coordinate with a non-default zoom level", () => {
+		const camera = new Camera(world, screen);
+		camera.zoom = 2;
+		const focusX = 300;
+		const focusY = 400;
+
+		camera.focusOn(focusX, focusY, screen);
+
+		assert.equal(camera.x, 100);
+		assert.equal(camera.y, 250);
 	});
 
 	describe("adjustZoom", () => {
@@ -67,6 +88,18 @@ describe("Camera", () => {
 			assert.equal(camera.zoom, 2);
 			assert.equal(camera.x, 300);
 			assert.equal(camera.y, 350);
+		});
+
+		it("treats pivot strictly 0 as a valid pivot (falsy zero boundary)", () => {
+			const camera = new Camera(world, screen);
+			const pivotX = 0;
+			const pivotY = 0;
+
+			camera.adjustZoom(1.0, pivotX, pivotY);
+
+			assert.equal(camera.zoom, 2);
+			assert.equal(camera.x, 100);
+			assert.equal(camera.y, 200);
 		});
 
 		it("does not adjust position if zoom limit is already reached", () => {
@@ -134,6 +167,21 @@ describe("Camera", () => {
 
 			assert.equal(backToWorld.x, originalWorldX);
 			assert.equal(backToWorld.y, originalWorldY);
+		});
+
+		it("transforms negative fractional coordinates accurately", () => {
+			const camera = new Camera(world, screen);
+			camera.zoom = 0.5;
+
+			const screenCoords = camera.worldToScreen(-200.5, -300.5);
+
+			assert.equal(screenCoords.x, -150.25);
+			assert.equal(screenCoords.y, -250.25);
+
+			const worldCoords = camera.screenToWorld(-150.25, -250.25);
+
+			assert.equal(worldCoords.x, -200.5);
+			assert.equal(worldCoords.y, -300.5);
 		});
 	});
 });

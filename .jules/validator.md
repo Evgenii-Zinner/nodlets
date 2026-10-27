@@ -64,3 +64,7 @@
 - **Audited Path:** `public/`
 - **Tests Added / Hardened:** `test/Renderer.test.mjs`
 - **Learning / Discovery:** Hardened `Renderer` UI rendering tests by replacing shallow mock tests with boundary interaction assertions verifying the correct visual representation of `activeTargetServer`, `selectedServerIndex`, and `selectedNodletIndex`. Added explicit checks for bounding box logic inside `drawGrid` and `drawInfluenceZones` using PIXI mock injections.
+## 2023-11-06 - Camera
+- **Audited Path:** `public/`
+- **Tests Added / Hardened:** `test/Camera.test.mjs`
+- **Learning / Discovery:** Hardened `Camera` tests by asserting non-default zoom factors during centering and focus translations. Added edge case validation where a falsy `0` pivot was potentially bypassing zoom offsets, and strictly verified negative fractional math correctly mirroring between screen and world projections.
