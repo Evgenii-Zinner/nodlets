@@ -100,4 +100,82 @@ test("worker.js Cloudflare Worker fetch handler", async (t) => {
 			}
 		},
 	);
+
+	await t.test(
+		"preserves original request method and headers when rewriting root to index.html",
+		async () => {
+			let receivedReq = null;
+			const env = {
+				ASSETS: {
+					fetch: async (req) => {
+						receivedReq = req;
+						return new Response("index content", { status: 200 });
+					},
+				},
+			};
+
+			const req = new Request("https://example.com/", {
+				method: "POST",
+				headers: {
+					"X-Custom-Header": "test-value",
+				},
+			});
+			const res = await worker.fetch(req, env);
+
+			assert.equal(res.status, 200);
+			assert.equal(receivedReq.method, "POST");
+			assert.equal(receivedReq.headers.get("X-Custom-Header"), "test-value");
+			assert.equal(receivedReq.url, "https://example.com/index.html");
+		},
+	);
+
+	await t.test(
+		"passes through natural non-200 responses from ASSETS with security headers",
+		async () => {
+			const env = {
+				ASSETS: {
+					fetch: async (_req) => {
+						return new Response("Forbidden", { status: 403 });
+					},
+				},
+			};
+			const req = new Request("https://example.com/admin");
+			const res = await worker.fetch(req, env);
+
+			assert.equal(res.status, 403);
+			const body = await res.text();
+			assert.equal(body, "Forbidden");
+
+			for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+				assert.equal(res.headers.get(key), value);
+			}
+		},
+	);
+
+	await t.test(
+		"gracefully handles invalid request URL (TypeError during new URL)",
+		async () => {
+			const env = {
+				ASSETS: {
+					fetch: async () => new Response("ok"),
+				},
+			};
+
+			const originalConsoleError = console.error;
+			console.error = () => {};
+
+			const mockReq = { url: "not-a-valid-url" };
+			const res = await worker.fetch(mockReq, env);
+
+			console.error = originalConsoleError;
+
+			assert.equal(res.status, 404);
+			const body = await res.text();
+			assert.equal(body, "Not Found");
+
+			for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+				assert.equal(res.headers.get(key), value);
+			}
+		},
+	);
 });

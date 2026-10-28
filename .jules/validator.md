@@ -68,3 +68,7 @@
 - **Audited Path:** `public/`
 - **Tests Added / Hardened:** `test/Camera.test.mjs`
 - **Learning / Discovery:** Hardened `Camera` tests by asserting non-default zoom factors during centering and focus translations. Added edge case validation where a falsy `0` pivot was potentially bypassing zoom offsets, and strictly verified negative fractional math correctly mirroring between screen and world projections.
+## 2023-11-07 - root
+- **Audited Path:** `/`
+- **Tests Added / Hardened:** `test/worker.test.mjs`
+- **Learning / Discovery:** Hardened `worker.js` by asserting boundaries, ensuring original request properties (method, headers) are cleanly passed to `ASSETS.fetch` when rewriting paths, passing through natural non-200 responses, and gracefully catching `new URL()` TypeErrors on invalid requests with valid 404 security headers responses.
