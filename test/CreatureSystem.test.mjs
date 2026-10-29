@@ -29,6 +29,14 @@ test("CreatureSystem - Core Initialization", async (t) => {
 });
 
 test("CreatureSystem - Grid and Neighbors", async (t) => {
+	await t.test("updateGrid safely early returns when grid is null", () => {
+		const sys = new CreatureSystem(10);
+		sys.spawn(100, 100);
+
+		sys.updateGrid();
+		assert.equal(sys.grid, null);
+	});
+
 	await t.test("initializes and updates spatial grid correctly", () => {
 		const sys = new CreatureSystem(10);
 		sys.initGrid(500, 500); // cellSize is 200, so 3x3 grid
@@ -113,6 +121,30 @@ test("CreatureSystem - Spawning Logic", async (t) => {
 		assert.ok(sys.maxEnergy[idx] >= 130); // 80 base + up to 40 + 50 boost
 	});
 
+	await t.test("spawns with negative mutation", () => {
+		const sys = new CreatureSystem(10);
+		const parentParams = { size: 10, color: 0x123456ff };
+		const perks = {
+			maxEnergyBoost: 0,
+			positiveMutationChance: 0.0,
+			negativeMutationChance: 1.0, // Force negative mutation
+		};
+		const idx = sys.spawn(100, 200, parentParams, perks);
+		assert.ok(sys.size[idx] >= 8 && sys.size[idx] <= 9); // size * 0.8 or 0.9
+	});
+
+	await t.test("spawns with neutral mutation", () => {
+		const sys = new CreatureSystem(10);
+		const parentParams = { size: 10, color: 0x123456ff };
+		const perks = {
+			maxEnergyBoost: 0,
+			positiveMutationChance: 0.0,
+			negativeMutationChance: 0.0, // Force neutral mutation
+		};
+		const idx = sys.spawn(100, 200, parentParams, perks);
+		assert.ok(sys.size[idx] >= 9 && sys.size[idx] <= 11); // size * 0.95 to 1.05
+	});
+
 	await t.test("rejects spawning beyond maxCreatures limit", () => {
 		const sys = new CreatureSystem(2);
 
@@ -151,9 +183,30 @@ test("CreatureSystem - Despawn Logic", async (t) => {
 		sys.despawn(5);
 		assert.equal(sys.count, 1);
 	});
+
+	await t.test("despawning the last element skips swap", () => {
+		const sys = new CreatureSystem(10);
+		sys.spawn(10, 10); // idx 0
+		sys.spawn(20, 20); // idx 1
+
+		sys.despawn(1);
+
+		assert.equal(sys.count, 1);
+		assert.equal(sys.posX[0], 10); // Still 10
+	});
 });
 
 test("CreatureSystem - Update Logic", async (t) => {
+	await t.test("update implicitly initializes grid if not already created", () => {
+		const sys = new CreatureSystem(10);
+		const world = { width: 1000, height: 1000 };
+		sys.spawn(100, 100);
+
+		assert.equal(sys.grid, null);
+		sys.update(1.0, world);
+		assert.notEqual(sys.grid, null);
+	});
+
 	await t.test("updates positions based on velocity and deltaTime", () => {
 		const sys = new CreatureSystem(10);
 		const world = { width: 1000, height: 1000 };
