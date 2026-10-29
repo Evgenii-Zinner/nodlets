@@ -72,3 +72,7 @@
 - **Audited Path:** `/`
 - **Tests Added / Hardened:** `test/worker.test.mjs`
 - **Learning / Discovery:** Hardened `worker.js` by asserting boundaries, ensuring original request properties (method, headers) are cleanly passed to `ASSETS.fetch` when rewriting paths, passing through natural non-200 responses, and gracefully catching `new URL()` TypeErrors on invalid requests with valid 404 security headers responses.
+## 2023-11-08 - CreatureSystem
+- **Audited Path:** `test/`
+- **Tests Added / Hardened:** `test/CreatureSystem.test.mjs`
+- **Learning / Discovery:** Hardened `CreatureSystem` testing by explicitly asserting branching logic for neutral and negative mutation boundaries, verifying safe early returns when operations are performed on an uninitialized spatial grid (`!this.grid`), and asserting that the "Swap and Pop" logic safely skips swap assignment when despawning the very last element in the TypedArray.
