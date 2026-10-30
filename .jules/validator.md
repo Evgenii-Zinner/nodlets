@@ -76,3 +76,8 @@
 - **Audited Path:** `test/`
 - **Tests Added / Hardened:** `test/CreatureSystem.test.mjs`
 - **Learning / Discovery:** Hardened `CreatureSystem` testing by explicitly asserting branching logic for neutral and negative mutation boundaries, verifying safe early returns when operations are performed on an uninitialized spatial grid (`!this.grid`), and asserting that the "Swap and Pop" logic safely skips swap assignment when despawning the very last element in the TypedArray.
+
+## 2026-10-30 - ResourceSystem
+- **Audited Path:** `test/ResourceSystem.test.mjs`
+- **Tests Added / Hardened:** `test/ResourceSystem.test.mjs`
+- **Learning / Discovery:** Hardened ResourceSystem testing by adding checks for O(1) swap early exits, spatial grid uninitialized safe returns, out-of-bounds nextInCell handling, and ensuring Relay servers do not implicitly regenerate.

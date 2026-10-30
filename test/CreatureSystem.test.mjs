@@ -197,15 +197,18 @@ test("CreatureSystem - Despawn Logic", async (t) => {
 });
 
 test("CreatureSystem - Update Logic", async (t) => {
-	await t.test("update implicitly initializes grid if not already created", () => {
-		const sys = new CreatureSystem(10);
-		const world = { width: 1000, height: 1000 };
-		sys.spawn(100, 100);
+	await t.test(
+		"update implicitly initializes grid if not already created",
+		() => {
+			const sys = new CreatureSystem(10);
+			const world = { width: 1000, height: 1000 };
+			sys.spawn(100, 100);
 
-		assert.equal(sys.grid, null);
-		sys.update(1.0, world);
-		assert.notEqual(sys.grid, null);
-	});
+			assert.equal(sys.grid, null);
+			sys.update(1.0, world);
+			assert.notEqual(sys.grid, null);
+		},
+	);
 
 	await t.test("updates positions based on velocity and deltaTime", () => {
 		const sys = new CreatureSystem(10);
