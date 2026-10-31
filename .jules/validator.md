@@ -76,3 +76,7 @@
 - **Audited Path:** `test/`
 - **Tests Added / Hardened:** `test/CreatureSystem.test.mjs`
 - **Learning / Discovery:** Hardened `CreatureSystem` testing by explicitly asserting branching logic for neutral and negative mutation boundaries, verifying safe early returns when operations are performed on an uninitialized spatial grid (`!this.grid`), and asserting that the "Swap and Pop" logic safely skips swap assignment when despawning the very last element in the TypedArray.
+## 2023-11-09 - CreatureSystem
+- **Audited Path:** `test/`
+- **Tests Added / Hardened:** `test/CreatureSystem.test.mjs`
+- **Learning / Discovery:** Hardened `CreatureSystem` testing by explicitly asserting the early exits in `updateGrid` for spatial grid boundaries. When a resource is spawned at out-of-bounds negative or positive coordinates, the system successfully defaults to `-1` for `nextInCell` instead of storing an out-of-bounds index or throwing.
