@@ -85,6 +85,33 @@ test("CreatureSystem - Grid and Neighbors", async (t) => {
 		sys.forEachNeighbor(100, 100, 50, () => callCount++);
 		assert.equal(callCount, 0); // shouldn't throw, just returns
 	});
+
+	await t.test(
+		"updateGrid correctly assigns -1 to nextInCell for out-of-bounds resources",
+		() => {
+			const sys = new CreatureSystem(10);
+			sys.initGrid(500, 500); // 3x3 grid
+
+			// Negative out-of-bounds
+			const idxNeg = sys.spawn(-100, -100);
+
+			// Positive out-of-bounds (grid size is 500, so > 600 is out)
+			const idxPos = sys.spawn(1000, 1000);
+
+			sys.updateGrid();
+
+			assert.equal(
+				sys.nextInCell[idxNeg],
+				-1,
+				"Negative out-of-bounds should fallback to -1",
+			);
+			assert.equal(
+				sys.nextInCell[idxPos],
+				-1,
+				"Positive out-of-bounds should fallback to -1",
+			);
+		},
+	);
 });
 
 test("CreatureSystem - Spawning Logic", async (t) => {
@@ -197,15 +224,18 @@ test("CreatureSystem - Despawn Logic", async (t) => {
 });
 
 test("CreatureSystem - Update Logic", async (t) => {
-	await t.test("update implicitly initializes grid if not already created", () => {
-		const sys = new CreatureSystem(10);
-		const world = { width: 1000, height: 1000 };
-		sys.spawn(100, 100);
+	await t.test(
+		"update implicitly initializes grid if not already created",
+		() => {
+			const sys = new CreatureSystem(10);
+			const world = { width: 1000, height: 1000 };
+			sys.spawn(100, 100);
 
-		assert.equal(sys.grid, null);
-		sys.update(1.0, world);
-		assert.notEqual(sys.grid, null);
-	});
+			assert.equal(sys.grid, null);
+			sys.update(1.0, world);
+			assert.notEqual(sys.grid, null);
+		},
+	);
 
 	await t.test("updates positions based on velocity and deltaTime", () => {
 		const sys = new CreatureSystem(10);
