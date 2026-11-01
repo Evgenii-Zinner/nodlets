@@ -100,6 +100,18 @@ test("NodletSystem - Despawn Logic", async (t) => {
 		sys.despawn(5);
 		assert.equal(sys.count, 1);
 	});
+
+	await t.test("despawning the last element skips swap", () => {
+		const sys = new NodletSystem(10);
+		sys.spawn(10, 10, 1); // idx 0
+		sys.spawn(20, 20, 1); // idx 1
+
+		sys.despawn(1);
+
+		assert.equal(sys.count, 1);
+		assert.equal(sys.posX[0], 10);
+		assert.equal(sys.posY[0], 10);
+	});
 });
 
 test("NodletSystem - forEachNeighbor Logic", async (t) => {
