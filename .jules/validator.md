@@ -80,3 +80,7 @@
 - **Audited Path:** `test/`
 - **Tests Added / Hardened:** `test/CreatureSystem.test.mjs`
 - **Learning / Discovery:** Hardened `CreatureSystem` testing by explicitly asserting the early exits in `updateGrid` for spatial grid boundaries. When a resource is spawned at out-of-bounds negative or positive coordinates, the system successfully defaults to `-1` for `nextInCell` instead of storing an out-of-bounds index or throwing.
+## 2023-11-10 - NodletSystem
+- **Audited Path:** `test/`
+- **Tests Added / Hardened:** `test/NodletSystem.test.mjs`
+- **Learning / Discovery:** Hardened `NodletSystem` testing by verifying boundary condition logic where despawning the last element in the typed array correctly safely skips the swap assignment to avoid redundant memory writes.
