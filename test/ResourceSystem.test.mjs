@@ -109,9 +109,32 @@ test("ResourceSystem - Despawn and Swap/Pop", async (t) => {
 		sys.despawn(5);
 		assert.equal(sys.count, 1);
 	});
+
+	await t.test("despawning the last element skips swap assignment", () => {
+		const sys = new ResourceSystem(10);
+		sys.spawnServer(10, 10, 100, 0); // idx 0
+		sys.spawnServer(20, 20, 200, 1); // idx 1
+		sys.spawnServer(30, 30, 300, 0); // idx 2
+
+		assert.equal(sys.count, 3);
+
+		sys.despawn(2);
+
+		assert.equal(sys.count, 2);
+		assert.equal(sys.posX[1], 20); // idx 1 remains unchanged
+		assert.equal(sys.type[1], 1);
+	});
 });
 
 test("ResourceSystem - Grid Initialization and Neighbors", async (t) => {
+	await t.test("updateGrid safely early returns when grid is null", () => {
+		const sys = new ResourceSystem(10);
+		sys.spawnServer(10, 10, 100, 0);
+
+		sys.updateGrid();
+		assert.equal(sys.grid, null);
+	});
+
 	await t.test(
 		"initializes spatial grid correctly based on world bounds",
 		() => {
@@ -158,6 +181,18 @@ test("ResourceSystem - Grid Initialization and Neighbors", async (t) => {
 		const count = sys.getNeighbors(-500, -500, 100, outArray);
 		assert.equal(count, 0);
 	});
+
+	await t.test(
+		"updateGrid assigns -1 to nextInCell when resource is placed out-of-bounds",
+		() => {
+			const sys = new ResourceSystem(10);
+			sys.initGrid(500, 500); // cols: 3, rows: 3
+			const idx = sys.spawnServer(-100, -100, 100, 0); // Negative coords
+
+			sys.updateGrid();
+			assert.equal(sys.nextInCell[idx], -1);
+		},
+	);
 });
 
 test("ResourceSystem - Update Logic", async (t) => {
@@ -175,6 +210,19 @@ test("ResourceSystem - Update Logic", async (t) => {
 
 		sys.update(10.0, world); // Over-regen
 		assert.equal(sys.amount[idx], 100); // Clamped
+	});
+
+	await t.test("relay servers do not regenerate amount over time", () => {
+		const sys = new ResourceSystem(10);
+		const world = { width: 1000, height: 1000 };
+
+		const idx = sys.spawnServer(0, 0, 100, 1); // Relay server (type 1)
+		sys.amount[idx] = 50; // Drain it
+
+		// Regenerates 10 bytes per second if type 0, should not if type 1
+		sys.update(2.0, world);
+
+		assert.equal(sys.amount[idx], 50);
 	});
 
 	await t.test(
