@@ -89,3 +89,7 @@
 - **Audited Path:** `test/`
 - **Tests Added / Hardened:** `test/NodletSystem.test.mjs`
 - **Learning / Discovery:** Hardened `NodletSystem` testing by verifying boundary condition logic where despawning the last element in the typed array correctly safely skips the swap assignment to avoid redundant memory writes.
+## 2023-11-11 - public
+- **Audited Path:** `public/`
+- **Tests Added / Hardened:** `test/UpgradeSystem.test.mjs`
+- **Learning / Discovery:** Hardened `UpgradeSystem` bounds handling: explicitly validated resistance to prototype injection (e.g. `buyUpgrade("toString", "capacity")` and `buyUpgrade("tier1", "constructor")`) due to object property lookups, and added strict boundaries for fractional available point calculations mathematically right under the threshold (1023 points out of 1024 evaluating exactly to 0 points available).

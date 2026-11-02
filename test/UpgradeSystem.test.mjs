@@ -225,6 +225,38 @@ test("UpgradeSystem - Tier Progression", async (t) => {
 	});
 });
 
+test("UpgradeSystem - Advanced Boundary and Edge Cases", async (t) => {
+	await t.test("rejects purchase when using prototype poisoning (tier)", () => {
+		const sys = new UpgradeSystem();
+		sys.addTotalData(1024 * 10);
+
+		const result = sys.buyUpgrade("toString", "capacity");
+		assert.equal(result, false);
+		assert.equal(sys.spentPoints, 0);
+	});
+
+	await t.test("rejects purchase when using prototype poisoning (node)", () => {
+		const sys = new UpgradeSystem();
+		sys.addTotalData(1024 * 10);
+
+		const result = sys.buyUpgrade("tier1", "constructor");
+		assert.equal(result, false);
+		assert.equal(sys.spentPoints, 0);
+	});
+
+	await t.test("strictly rounds down fractional points right under the threshold", () => {
+		const sys = new UpgradeSystem();
+		sys.bytesPerPoint = 1024;
+
+		// 1023 / 1024 = 0.999... should still be 0 points
+		sys.addTotalData(1023);
+		assert.equal(sys.availablePoints, 0);
+
+		const result = sys.buyUpgrade("tier1", "capacity");
+		assert.equal(result, false);
+	});
+});
+
 test("UpgradeSystem - Perk Accumulation (Mutations)", async (t) => {
 	await t.test("Tier 1 and Tier 2 Capacity correctly increases perk", () => {
 		const sys = new UpgradeSystem();
