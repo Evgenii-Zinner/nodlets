@@ -178,4 +178,73 @@ test("worker.js Cloudflare Worker fetch handler", async (t) => {
 			}
 		},
 	);
+
+	await t.test(
+		"preserves existing response headers (like Content-Type) from upstream ASSETS",
+		async () => {
+			const env = {
+				ASSETS: {
+					fetch: async () => {
+						return new Response("script content", {
+							status: 200,
+							headers: {
+								"Content-Type": "application/javascript",
+								"Cache-Control": "max-age=3600",
+							},
+						});
+					},
+				},
+			};
+			const req = new Request("https://example.com/app.js");
+			const res = await worker.fetch(req, env);
+
+			assert.equal(res.status, 200);
+
+			// Assert original headers are preserved
+			assert.equal(res.headers.get("Content-Type"), "application/javascript");
+			assert.equal(res.headers.get("Cache-Control"), "max-age=3600");
+
+			// Assert security headers are still merged in
+			for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+				assert.equal(res.headers.get(key), value);
+			}
+		},
+	);
+
+	await t.test(
+		"root path rewriting implicitly drops query parameters",
+		async () => {
+			let fetchedUrl = null;
+			const env = {
+				ASSETS: {
+					fetch: async (req) => {
+						fetchedUrl = req.url;
+						return new Response("index content");
+					},
+				},
+			};
+			const req = new Request("https://example.com/?foo=bar");
+			await worker.fetch(req, env);
+
+			// Assert query string '?foo=bar' is omitted due to `new URL("/index.html", request.url)`
+			assert.equal(fetchedUrl, "https://example.com/index.html");
+		},
+	);
+
+	await t.test("non-root path fetches preserve query parameters", async () => {
+		let fetchedUrl = null;
+		const env = {
+			ASSETS: {
+				fetch: async (req) => {
+					fetchedUrl = req.url;
+					return new Response("css content");
+				},
+			},
+		};
+		const req = new Request("https://example.com/style.css?v=2");
+		await worker.fetch(req, env);
+
+		// Assert query string '?v=2' is passed through directly
+		assert.equal(fetchedUrl, "https://example.com/style.css?v=2");
+	});
 });
