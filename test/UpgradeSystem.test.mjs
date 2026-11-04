@@ -244,17 +244,20 @@ test("UpgradeSystem - Advanced Boundary and Edge Cases", async (t) => {
 		assert.equal(sys.spentPoints, 0);
 	});
 
-	await t.test("strictly rounds down fractional points right under the threshold", () => {
-		const sys = new UpgradeSystem();
-		sys.bytesPerPoint = 1024;
+	await t.test(
+		"strictly rounds down fractional points right under the threshold",
+		() => {
+			const sys = new UpgradeSystem();
+			sys.bytesPerPoint = 1024;
 
-		// 1023 / 1024 = 0.999... should still be 0 points
-		sys.addTotalData(1023);
-		assert.equal(sys.availablePoints, 0);
+			// 1023 / 1024 = 0.999... should still be 0 points
+			sys.addTotalData(1023);
+			assert.equal(sys.availablePoints, 0);
 
-		const result = sys.buyUpgrade("tier1", "capacity");
-		assert.equal(result, false);
-	});
+			const result = sys.buyUpgrade("tier1", "capacity");
+			assert.equal(result, false);
+		},
+	);
 });
 
 test("UpgradeSystem - Perk Accumulation (Mutations)", async (t) => {

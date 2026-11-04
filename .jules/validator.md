@@ -93,3 +93,7 @@
 - **Audited Path:** `public/`
 - **Tests Added / Hardened:** `test/UpgradeSystem.test.mjs`
 - **Learning / Discovery:** Hardened `UpgradeSystem` bounds handling: explicitly validated resistance to prototype injection (e.g. `buyUpgrade("toString", "capacity")` and `buyUpgrade("tier1", "constructor")`) due to object property lookups, and added strict boundaries for fractional available point calculations mathematically right under the threshold (1023 points out of 1024 evaluating exactly to 0 points available).
+## 2026-11-04 - root
+- **Audited Path:** `/`
+- **Tests Added / Hardened:** `test/worker.test.mjs`
+- **Learning / Discovery:** Hardened `worker.js` testing by explicitly asserting that `addSecurityHeaders` safely merges security headers while perfectly preserving upstream response headers (like `Content-Type`), and strictly verifying boundary behaviors where root path rewrites implicitly drop query parameters while non-root paths pass them through unchanged.
