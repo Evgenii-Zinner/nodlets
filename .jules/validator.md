@@ -97,3 +97,7 @@
 - **Audited Path:** `/`
 - **Tests Added / Hardened:** `test/worker.test.mjs`
 - **Learning / Discovery:** Hardened `worker.js` testing by explicitly asserting that `addSecurityHeaders` safely merges security headers while perfectly preserving upstream response headers (like `Content-Type`), and strictly verifying boundary behaviors where root path rewrites implicitly drop query parameters while non-root paths pass them through unchanged.
+## 2023-11-12 - public
+- **Audited Path:** `public/`
+- **Tests Added / Hardened:** `test/Renderer.test.mjs`
+- **Learning / Discovery:** Hardened `Renderer` UI logic boundary assertions covering state mutations (Nodlet pulsing with data vs neutral state), rendering type bounds (Type-2 data packet specific sizing/texture assignment), culling boundaries outside spatial grid mappings for entities, scale interpolation rotation for high speed, and hidden sprite pools logic where pooled entities exceed active count ensuring clean visual rendering.
