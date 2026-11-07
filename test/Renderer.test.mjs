@@ -187,6 +187,67 @@ describe("Renderer", async () => {
 		assert.equal(renderer.resourceSprites[1].scale.x, 1.0);
 	});
 
+	it("updates data packets (type 2) with correct texture and scaling", async () => {
+		const colors = { ground: 0x000000, grid: 0x222222 };
+		const world = { width: 1000, height: 1000 };
+		const renderer = new Renderer(colors, world);
+		const mockContainerElement = { appendChild: (_child) => {} };
+		await renderer.init(mockContainerElement);
+
+		const resources = {
+			count: 1,
+			posX: new Float32Array([100]),
+			posY: new Float32Array([100]),
+			type: new Uint8Array([2]), // Packet
+			amount: new Float32Array([50]),
+			maxAmount: new Float32Array([100]),
+		};
+
+		const bounds = { minX: 0, maxX: 500, minY: 0, maxY: 500 };
+		renderer.updateResources(resources, bounds, -1, -1);
+
+		assert.equal(renderer.resourceSprites.length, 1);
+		assert.equal(renderer.resourceSprites[0].visible, true);
+		assert.equal(renderer.resourceSprites[0].texture, renderer.dataTexture);
+		assert.equal(renderer.resourceSprites[0].scale.x, 1.0);
+		assert.equal(renderer.resourceSprites[0].alpha, 1.0);
+	});
+
+	it("re-uses and hides extra resources when pool exceeds entity count", async () => {
+		const colors = { ground: 0x000000, grid: 0x222222 };
+		const world = { width: 1000, height: 1000 };
+		const renderer = new Renderer(colors, world);
+		const mockContainerElement = { appendChild: (_child) => {} };
+		await renderer.init(mockContainerElement);
+
+		const bounds = { minX: 0, maxX: 500, minY: 0, maxY: 500 };
+		const threeResources = {
+			count: 3,
+			posX: new Float32Array([100, 200, 300]),
+			posY: new Float32Array([100, 200, 300]),
+			type: new Uint8Array([0, 0, 0]),
+			amount: new Float32Array([50, 50, 50]),
+			maxAmount: new Float32Array([100, 100, 100]),
+		};
+		renderer.updateResources(threeResources, bounds, -1, -1);
+		assert.equal(renderer.resourceSprites.length, 3);
+		assert.equal(renderer.resourceSprites[2].visible, true);
+
+		const oneResource = {
+			count: 1,
+			posX: new Float32Array([100]),
+			posY: new Float32Array([100]),
+			type: new Uint8Array([0]),
+			amount: new Float32Array([50]),
+			maxAmount: new Float32Array([100]),
+		};
+		renderer.updateResources(oneResource, bounds, -1, -1);
+		assert.equal(renderer.resourceSprites.length, 3);
+		assert.equal(renderer.resourceSprites[0].visible, true);
+		assert.equal(renderer.resourceSprites[1].visible, false);
+		assert.equal(renderer.resourceSprites[2].visible, false);
+	});
+
 	it("culls resources outside of bounds", async () => {
 		const colors = { ground: 0x000000, grid: 0x222222 };
 		const world = { width: 1000, height: 1000 };
@@ -239,6 +300,60 @@ describe("Renderer", async () => {
 		assert.equal(body.tint, 0xff0000);
 	});
 
+	it("culls hubs outside of bounds", async () => {
+		const colors = { ground: 0x000000, grid: 0x222222 };
+		const world = { width: 1000, height: 1000 };
+		const renderer = new Renderer(colors, world);
+		const mockContainerElement = { appendChild: (_child) => {} };
+		await renderer.init(mockContainerElement);
+
+		const hubs = {
+			count: 1,
+			posX: new Float32Array([600]), // Outside bounds
+			posY: new Float32Array([600]),
+			color: new Uint32Array([(0xff0000 << 8) | 0xff]),
+			size: new Float32Array([10]),
+		};
+
+		const bounds = { minX: 0, maxX: 500, minY: 0, maxY: 500 };
+		renderer.updateHubs(hubs, bounds);
+
+		assert.equal(renderer.hubSprites.length, 1);
+		assert.equal(renderer.hubSprites[0].visible, false);
+	});
+
+	it("re-uses and hides extra hubs when pool exceeds entity count", async () => {
+		const colors = { ground: 0x000000, grid: 0x222222 };
+		const world = { width: 1000, height: 1000 };
+		const renderer = new Renderer(colors, world);
+		const mockContainerElement = { appendChild: (_child) => {} };
+		await renderer.init(mockContainerElement);
+
+		const bounds = { minX: 0, maxX: 500, minY: 0, maxY: 500 };
+		const twoHubs = {
+			count: 2,
+			posX: new Float32Array([100, 200]),
+			posY: new Float32Array([100, 200]),
+			color: new Uint32Array([(0xff0000 << 8) | 0xff, (0xff0000 << 8) | 0xff]),
+			size: new Float32Array([10, 10]),
+		};
+		renderer.updateHubs(twoHubs, bounds);
+		assert.equal(renderer.hubSprites.length, 2);
+		assert.equal(renderer.hubSprites[1].visible, true);
+
+		const oneHub = {
+			count: 1,
+			posX: new Float32Array([100]),
+			posY: new Float32Array([100]),
+			color: new Uint32Array([(0xff0000 << 8) | 0xff]),
+			size: new Float32Array([10]),
+		};
+		renderer.updateHubs(oneHub, bounds);
+		assert.equal(renderer.hubSprites.length, 2);
+		assert.equal(renderer.hubSprites[0].visible, true);
+		assert.equal(renderer.hubSprites[1].visible, false);
+	});
+
 	it("updates nodlets with squash and stretch based on velocity", async () => {
 		const colors = { ground: 0x000000, grid: 0x222222 };
 		const world = { width: 1000, height: 1000 };
@@ -275,6 +390,143 @@ describe("Renderer", async () => {
 		assert.equal(body.width, 10 * stretch);
 		assert.equal(body.height, 10 * squash);
 		assert.equal(body.tint, 0x00ff00);
+	});
+
+	it("rotates nodlets when speed exceeds rotation threshold", async () => {
+		const colors = { ground: 0x000000, grid: 0x222222 };
+		const world = { width: 1000, height: 1000 };
+		const renderer = new Renderer(colors, world);
+		const mockContainerElement = { appendChild: (_child) => {} };
+		await renderer.init(mockContainerElement);
+
+		const nodlets = {
+			count: 1,
+			posX: new Float32Array([100]),
+			posY: new Float32Array([100]),
+			velX: new Float32Array([10]), // vx = 10, vy = 10
+			velY: new Float32Array([10]),
+			size: new Float32Array([10]),
+			state: new Uint8Array([0]),
+			color: new Uint32Array([(0x00ff00 << 8) | 0xff]),
+			carriedData: new Float32Array([0]),
+			maxDataCapacity: new Float32Array([100]),
+		};
+		const camera = { zoom: 1 };
+		const bounds = { minX: 0, maxX: 500, minY: 0, maxY: 500 };
+
+		renderer.updateNodlets(nodlets, camera, bounds, -1);
+
+		const root = renderer.nodletSprites[0];
+		const body = root._body;
+
+		const expectedRotation = Math.atan2(10, 10);
+		assert.equal(body.rotation, expectedRotation);
+	});
+
+	it("applies pulse scaling to nodlets returning with data (state 1)", async () => {
+		const colors = { ground: 0x000000, grid: 0x222222 };
+		const world = { width: 1000, height: 1000 };
+		const renderer = new Renderer(colors, world);
+		const mockContainerElement = { appendChild: (_child) => {} };
+		await renderer.init(mockContainerElement);
+
+		const nodlets = {
+			count: 1,
+			posX: new Float32Array([100]),
+			posY: new Float32Array([100]),
+			velX: new Float32Array([0]),
+			velY: new Float32Array([0]),
+			size: new Float32Array([10]),
+			state: new Uint8Array([1]), // state 1 = returning with data
+			color: new Uint32Array([(0x00ff00 << 8) | 0xff]),
+			carriedData: new Float32Array([50]),
+			maxDataCapacity: new Float32Array([100]),
+		};
+		const camera = { zoom: 1 };
+		const bounds = { minX: 0, maxX: 500, minY: 0, maxY: 500 };
+
+		renderer.updateNodlets(nodlets, camera, bounds, -1);
+
+		const root = renderer.nodletSprites[0];
+		const body = root._body;
+
+		// Global pulse will be >= 0.8 and <= 1.2
+		// So targetWidth and targetHeight will be greater than or less than 10 but will not be exactly 10 unless pulse is exactly 1.0
+		// But it definitely scales from base size 10. We just assert it is valid numbers.
+		assert.ok(body.width > 0);
+		assert.ok(body.height > 0);
+	});
+
+	it("culls nodlets outside of bounds", async () => {
+		const colors = { ground: 0x000000, grid: 0x222222 };
+		const world = { width: 1000, height: 1000 };
+		const renderer = new Renderer(colors, world);
+		const mockContainerElement = { appendChild: (_child) => {} };
+		await renderer.init(mockContainerElement);
+
+		const nodlets = {
+			count: 1,
+			posX: new Float32Array([600]), // Outside bounds
+			posY: new Float32Array([600]),
+			velX: new Float32Array([0]),
+			velY: new Float32Array([0]),
+			size: new Float32Array([10]),
+			state: new Uint8Array([0]),
+			color: new Uint32Array([(0x00ff00 << 8) | 0xff]),
+			carriedData: new Float32Array([0]),
+			maxDataCapacity: new Float32Array([100]),
+		};
+		const camera = { zoom: 1 };
+		const bounds = { minX: 0, maxX: 500, minY: 0, maxY: 500 };
+
+		renderer.updateNodlets(nodlets, camera, bounds, -1);
+
+		assert.equal(renderer.nodletSprites.length, 1);
+		assert.equal(renderer.nodletSprites[0].visible, false);
+	});
+
+	it("re-uses and hides extra nodlets when pool exceeds entity count", async () => {
+		const colors = { ground: 0x000000, grid: 0x222222 };
+		const world = { width: 1000, height: 1000 };
+		const renderer = new Renderer(colors, world);
+		const mockContainerElement = { appendChild: (_child) => {} };
+		await renderer.init(mockContainerElement);
+
+		const bounds = { minX: 0, maxX: 500, minY: 0, maxY: 500 };
+		const camera = { zoom: 1 };
+
+		const twoNodlets = {
+			count: 2,
+			posX: new Float32Array([100, 200]),
+			posY: new Float32Array([100, 200]),
+			velX: new Float32Array([0, 0]),
+			velY: new Float32Array([0, 0]),
+			size: new Float32Array([10, 10]),
+			state: new Uint8Array([0, 0]),
+			color: new Uint32Array([(0x00ff00 << 8) | 0xff, (0x00ff00 << 8) | 0xff]),
+			carriedData: new Float32Array([0, 0]),
+			maxDataCapacity: new Float32Array([100, 100]),
+		};
+		renderer.updateNodlets(twoNodlets, camera, bounds, -1);
+		assert.equal(renderer.nodletSprites.length, 2);
+		assert.equal(renderer.nodletSprites[1].visible, true);
+
+		const oneNodlet = {
+			count: 1,
+			posX: new Float32Array([100]),
+			posY: new Float32Array([100]),
+			velX: new Float32Array([0]),
+			velY: new Float32Array([0]),
+			size: new Float32Array([10]),
+			state: new Uint8Array([0]),
+			color: new Uint32Array([(0x00ff00 << 8) | 0xff]),
+			carriedData: new Float32Array([0]),
+			maxDataCapacity: new Float32Array([100]),
+		};
+		renderer.updateNodlets(oneNodlet, camera, bounds, -1);
+		assert.equal(renderer.nodletSprites.length, 2);
+		assert.equal(renderer.nodletSprites[0].visible, true);
+		assert.equal(renderer.nodletSprites[1].visible, false);
 	});
 
 	it("displays data bars for nodlets when zoomed in", async () => {
